@@ -256,12 +256,12 @@ final class WikitextCleaner
             return ' ' . str_replace('|', ' ', $inner) . ' ';
         }
 
-        // [[Target|Label]] -> Label
+        // A piped link renders as its label, the part after the last pipe.
         if (str_contains($inner, '|')) {
             $parts = explode('|', $inner);
             return ' ' . trim((string) end($parts)) . ' ';
         }
-        // [[Property::Value]] -> Value
+        // A semantic annotation renders as its value, the part after the colons.
         if (str_contains($inner, '::')) {
             $parts = explode('::', $inner);
             return ' ' . trim((string) end($parts)) . ' ';

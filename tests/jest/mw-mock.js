@@ -89,7 +89,8 @@ function createMwEnv( win, initialConfig ) {
 		letMobileStartupFinish: () => resolveUsing && resolveUsing(),
 
 		/** MobileFrontend is not installed, so the module never arrives. */
-		failMobileStartup: () => rejectUsing && rejectUsing( new Error( 'no module' ) ),
+		failMobileStartup: () =>
+			rejectUsing && rejectUsing( new Error( 'no module' ) ),
 
 		/** Replay what MobileFrontend does when mobile.startup executes. */
 		replayMobileFrontendConfig: () => config.set( mobileFrontendConfig() ),

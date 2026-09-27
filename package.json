@@ -28,6 +28,9 @@
         ]
     },
     "license": "MIT",
+    "overrides": {
+        "prettier": "npm:wp-prettier@^3.9.6"
+    },
     "scripts": {
         "docker:down": "docker compose down -v",
         "docker:up": "docker compose up -d && docker compose exec -e INSTALL_DEV_DEPS=1 wiki bash /var/www/html/extensions/ImproveSearch/.docker/setup-wiki.sh",

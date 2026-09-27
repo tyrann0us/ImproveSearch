@@ -6,10 +6,9 @@
  * inside mobile.startup, and the images must arrive afterwards in the shape
  * PageList.js would have rendered them.
  *
- * The module caches page ids for the lifetime of the page and never detaches
- * its MutationObserver, both of which are right in a browser and awkward in a
- * test runner that reuses one document. So every test works with page ids of
- * its own, and afterEach detaches the observers the test created.
+ * The module caches page ids for the lifetime of the page, which is right in a
+ * browser and awkward in a test runner that reuses one document. So every test
+ * works with page ids of its own.
  */
 
 'use strict';
@@ -79,24 +78,9 @@ function thumbElementFor( id ) {
 	);
 }
 
-const RealMutationObserver = global.MutationObserver;
-let observers = [];
-
 describe( 'deferred-thumbnails.js', () => {
 	beforeEach( () => {
 		document.body.innerHTML = '';
-		global.MutationObserver = class extends RealMutationObserver {
-			constructor( callback ) {
-				super( callback );
-				observers.push( this );
-			}
-		};
-	} );
-
-	afterEach( () => {
-		observers.forEach( ( observer ) => observer.disconnect() );
-		observers = [];
-		global.MutationObserver = RealMutationObserver;
 	} );
 
 	test( 'the image parameters are gone right after loading', () => {
@@ -205,9 +189,9 @@ describe( 'deferred-thumbnails.js', () => {
 		expect( env.requests[ 0 ].pageids ).toBe( '22|23' );
 		expect( thumbElementFor( 22 ).style.backgroundImage ).toBe( '' );
 		// Portrait, so the x variant.
-		expect( thumbElementFor( 23 ).classList.contains( 'list-thumb-x' ) ).toBe(
-			true
-		);
+		expect(
+			thumbElementFor( 23 ).classList.contains( 'list-thumb-x' )
+		).toBe( true );
 	} );
 
 	test( 'one request covers a page listed twice, and spare answers are dropped', async () => {
@@ -219,7 +203,10 @@ describe( 'deferred-thumbnails.js', () => {
 					thumbnail: thumbnail( 'http://example.org/c.png', 120, 80 ),
 				},
 				// A page the request never asked about.
-				{ pageid: 41, thumbnail: thumbnail( 'http://example.org/d.png', 1, 1 ) },
+				{
+					pageid: 41,
+					thumbnail: thumbnail( 'http://example.org/d.png', 1, 1 ),
+				},
 			] )
 		);
 		loadDeferredThumbnails( env );

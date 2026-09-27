@@ -42,6 +42,20 @@ if (!class_exists(SearchSuggestionSet::class)) {
     }
 }
 
+if (!class_exists(SearchResult::class)) {
+    class SearchResult
+    {
+        public function __construct(private ?\MediaWiki\Title\Title $title = null)
+        {
+        }
+
+        public function getTitle(): ?\MediaWiki\Title\Title
+        {
+            return $this->title;
+        }
+    }
+}
+
 if (!class_exists(SqlSearchResultSet::class)) {
     class SqlSearchResultSet
     {
@@ -88,7 +102,7 @@ if (!class_exists(SearchMySQL::class)) {
 
         /**
          * @param string $term
-         * @return iterable<object{getTitle: callable}>|false
+         * @return iterable<SearchResult>|false
          */
         protected function doSearchTextInDB($term)
         {

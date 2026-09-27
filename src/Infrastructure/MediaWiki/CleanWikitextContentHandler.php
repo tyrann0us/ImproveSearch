@@ -13,6 +13,7 @@ use MediaWiki\Content\WikitextContentHandler;
  */
 class CleanWikitextContentHandler extends WikitextContentHandler
 {
+    // phpcs:ignore Syde.Classes.DisallowGetterSetter.GetterFound -- MediaWiki ContentHandler API
     protected function getContentClass(): string
     {
         return CleanWikitextContent::class;

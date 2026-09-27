@@ -37,18 +37,12 @@ if [ "${INSTALL_DEV_DEPS:-0}" = "1" ] && [ ! -d /var/www/html/vendor/phpunit ]; 
     apache2ctl graceful || service apache2 reload || true
 fi
 
-# Wait for the database to accept connections.
-echo "Waiting for database..."
-for i in $(seq 1 60); do
-    if php -r 'exit(@mysqli_connect("database", "wikiuser", "wikipassword", "testwiki") ? 0 : 1);'; then
-        echo "Database is ready."
-        break
-    fi
-    sleep 1
-done
-
-# Install MediaWiki if not already done.
-if ! php -r 'exit(@mysqli_connect("database","wikiuser","wikipassword","testwiki")->query("SELECT 1 FROM page LIMIT 1") ? 0 : 1);' 2>/dev/null; then
+# Install MediaWiki if not already done. Compose gates this container on the
+# database's healthcheck, so the server is up by the time we get here.
+#
+# mysqli throws by default in PHP 8, and a missing page table is the normal
+# answer for this probe, not an error. Report off, so it just returns non-zero.
+if ! php -r 'mysqli_report(MYSQLI_REPORT_OFF); $c = mysqli_connect("database","wikiuser","wikipassword","testwiki"); exit($c && $c->query("SELECT 1 FROM page LIMIT 1") ? 0 : 1);'; then
     echo "Installing MediaWiki..."
     php maintenance/run.php install \
         --dbtype=mysql \

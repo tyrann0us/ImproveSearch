@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace MediaWiki\Extension\ImproveSearch\Tests\Integration;
 
-use MediaWiki\Extension\ImproveSearch\Infrastructure\MediaWiki\SubstringTitleSearchEngine;
-use MediaWiki\MainConfigNames;
+use MediaWiki\Extension\ImproveSearch\Infrastructure\MediaWiki\CleanWikitextContent;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Registration\ExtensionRegistry;
 use MediaWikiIntegrationTestCase;
 use PHPUnit\Framework\Attributes\CoversNothing;
 
 /**
- * Smoke test verifying that the ImproveSearch extension is registered, that
- * its callback claimed the search engine, and that the content handler for
- * wikitext is ours inside a real MediaWiki environment.
+ * Verifies that the extension is registered and that a page built through
+ * MediaWiki's own content-handler factory reaches the cleaner.
  *
- * Other Integration tests can rely on this passing as a precondition.
+ * The search engine is not asserted here. MediaWikiIntegrationTestCase pins
+ * $wgSearchType to SearchEngineDummy for test isolation, so whatever the
+ * callback claimed is gone by the time a test runs. Special:Search and the
+ * suggestion list are covered by the Playwright suite instead.
  */
 #[CoversNothing]
 class SmokeTest extends MediaWikiIntegrationTestCase
@@ -29,18 +30,21 @@ class SmokeTest extends MediaWikiIntegrationTestCase
         );
     }
 
-    public function testSearchEngineClassAutoloads(): void
+    /**
+     * The handler exists so that every wikitext page MediaWiki builds comes
+     * back as content whose search text is readable prose.
+     */
+    public function testWikitextPagesReachTheCleaner(): void
     {
-        self::assertTrue(
-            class_exists(SubstringTitleSearchEngine::class),
-            sprintf('%s did not autoload', SubstringTitleSearchEngine::class)
+        $handler = MediaWikiServices::getInstance()
+            ->getContentHandlerFactory()
+            ->getContentHandler(CONTENT_MODEL_WIKITEXT);
+
+        $content = $handler->unserializeContent(
+            "{{Cleanup}}[[File:X.jpg|thumb|A caption.]]Visible text."
         );
-    }
 
-    public function testCallbackClaimedTheSearchEngine(): void
-    {
-        $config = MediaWikiServices::getInstance()->getMainConfig();
-
-        self::assertSame('ImproveSearch', $config->get(MainConfigNames::SearchType));
+        self::assertInstanceOf(CleanWikitextContent::class, $content);
+        self::assertSame('Visible text.', $content->getTextForSearchIndex());
     }
 }

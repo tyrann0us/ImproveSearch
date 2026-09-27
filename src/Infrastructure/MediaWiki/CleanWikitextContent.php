@@ -20,6 +20,7 @@ use MediaWiki\MediaWikiServices;
  */
 class CleanWikitextContent extends WikitextContent
 {
+    // phpcs:ignore Syde.Classes.DisallowGetterSetter.GetterFound -- MediaWiki Content API
     public function getTextForSearchIndex(): string
     {
         $config = MediaWikiServices::getInstance()->getMainConfig();

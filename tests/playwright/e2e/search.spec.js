@@ -8,7 +8,7 @@ const { test, expect } = require( '@playwright/test' );
 
 /**
  * @param {import('@playwright/test').Page} page
- * @param {string} term
+ * @param {string}                          term
  * @return {Promise<string[]>} the suggested page titles, in order
  */
 async function suggestions( page, term ) {

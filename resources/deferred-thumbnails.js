@@ -16,7 +16,8 @@
 	'use strict';
 
 	// MobileFrontend asks for this width in SearchGateway.js.
-	const thumbSize = ( mw.config.get( 'wgMFThumbnailSizes' ) || {} ).tiny || 120;
+	const thumbSize =
+		( mw.config.get( 'wgMFThumbnailSizes' ) || {} ).tiny || 120;
 	// Page id to thumbnail, or null once we know the page has no image.
 	// Every keystroke renders a new list, mostly of the same pages.
 	const known = new Map();
@@ -34,10 +35,16 @@
 	function stripImageParams() {
 		const props = mw.config.get( 'wgMFQueryPropModules' ) || [];
 		if ( props.indexOf( 'pageimages' ) !== -1 ) {
-			mw.config.set( 'wgMFQueryPropModules', props.filter( ( prop ) => prop !== 'pageimages' ) );
+			mw.config.set(
+				'wgMFQueryPropModules',
+				props.filter( ( prop ) => prop !== 'pageimages' )
+			);
 		}
 
-		const params = Object.assign( {}, mw.config.get( 'wgMFSearchAPIParams' ) );
+		const params = Object.assign(
+			{},
+			mw.config.get( 'wgMFSearchAPIParams' )
+		);
 		delete params.piprop;
 		delete params.pithumbsize;
 		delete params.pilimit;
@@ -49,17 +56,17 @@
 	 * rendered it: background image on .list-thumb, orientation class, and no
 	 * placeholder icon left behind.
 	 *
-	 * @param {Element} thumbEl The .list-thumb element
-	 * @param {Object|null} thumb Thumbnail as returned by prop=pageimages
+	 * @param {Element}     thumbEl The .list-thumb element
+	 * @param {Object|null} thumb   Thumbnail as returned by prop=pageimages
 	 */
 	function paint( thumbEl, thumb ) {
-		if ( !thumb || !thumb.source ) {
+		if ( ! thumb || ! thumb.source ) {
 			return;
 		}
 
 		const isLandscape = thumb.width > thumb.height;
 		thumbEl.classList.toggle( 'list-thumb-y', isLandscape );
-		thumbEl.classList.toggle( 'list-thumb-x', !isLandscape );
+		thumbEl.classList.toggle( 'list-thumb-x', ! isLandscape );
 		// Quoted: a thumbnail URL may carry spaces or brackets.
 		thumbEl.style.backgroundImage = 'url("' + thumb.source + '")';
 
@@ -77,25 +84,32 @@
 	function openEntries() {
 		const entries = new Map();
 
-		document.querySelectorAll( '.mw-mf-page-list li.page-summary[data-id]' ).forEach( ( item ) => {
-			const id = Number( item.getAttribute( 'data-id' ) );
-			const thumbEl = item.querySelector( '.list-thumb' );
-			// data-style means the entry brought its own image and
-			// PageList.js is about to apply it.
-			if ( !id || !thumbEl || thumbEl.style.backgroundImage || thumbEl.dataset.style ) {
-				return;
-			}
+		document
+			.querySelectorAll( '.mw-mf-page-list li.page-summary[data-id]' )
+			.forEach( ( item ) => {
+				const id = Number( item.getAttribute( 'data-id' ) );
+				const thumbEl = item.querySelector( '.list-thumb' );
+				// data-style means the entry brought its own image and
+				// PageList.js is about to apply it.
+				if (
+					! id ||
+					! thumbEl ||
+					thumbEl.style.backgroundImage ||
+					thumbEl.dataset.style
+				) {
+					return;
+				}
 
-			if ( known.has( id ) ) {
-				paint( thumbEl, known.get( id ) );
-				return;
-			}
+				if ( known.has( id ) ) {
+					paint( thumbEl, known.get( id ) );
+					return;
+				}
 
-			if ( !entries.has( id ) ) {
-				entries.set( id, [] );
-			}
-			entries.get( id ).push( thumbEl );
-		} );
+				if ( ! entries.has( id ) ) {
+					entries.set( id, [] );
+				}
+				entries.get( id ).push( thumbEl );
+			} );
 
 		return entries;
 	}
@@ -107,7 +121,7 @@
 		scheduled = false;
 
 		const entries = openEntries();
-		if ( !entries.size ) {
+		if ( ! entries.size ) {
 			return;
 		}
 
@@ -121,20 +135,24 @@
 			pageids: ids.join( '|' ),
 			prop: 'pageimages',
 			piprop: 'thumbnail',
-			pithumbsize: thumbSize
-		} ).then( ( data ) => {
-			const pages = ( data.query && data.query.pages ) || [];
+			pithumbsize: thumbSize,
+		} )
+			.then( ( data ) => {
+				const pages = ( data.query && data.query.pages ) || [];
 
-			pages.forEach( ( page ) => {
-				const thumb = page.thumbnail || null;
-				// Remember the misses too, so typing on does not ask again.
-				known.set( page.pageid, thumb );
-				( entries.get( page.pageid ) || [] ).forEach( ( thumbEl ) => paint( thumbEl, thumb ) );
+				pages.forEach( ( page ) => {
+					const thumb = page.thumbnail || null;
+					// Remember the misses too, so typing on does not ask again.
+					known.set( page.pageid, thumb );
+					( entries.get( page.pageid ) || [] ).forEach( ( thumbEl ) =>
+						paint( thumbEl, thumb )
+					);
+				} );
+			} )
+			.catch( () => {
+				// An image that does not arrive is not worth a broken search. The
+				// placeholder icon stays, and the next list tries again.
 			} );
-		} ).catch( () => {
-			// An image that does not arrive is not worth a broken search. The
-			// placeholder icon stays, and the next list tries again.
-		} );
 	}
 
 	function schedule() {
@@ -155,6 +173,6 @@
 	// The overlay renders a fresh list on every keystroke.
 	new MutationObserver( schedule ).observe( document.body, {
 		childList: true,
-		subtree: true
+		subtree: true,
 	} );
-}() );
+} )();

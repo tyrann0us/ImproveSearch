@@ -11,6 +11,7 @@ use MediaWiki\Title\Title;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use SearchResult;
 use SqlSearchResultSet;
 use Wikimedia\Rdbms\IConnectionProvider;
 use Wikimedia\Rdbms\IReadableDatabase;
@@ -68,26 +69,13 @@ final class FixedConnectionProvider implements IConnectionProvider
     }
 }
 
-/** One hit from the full-text query. */
-final class FakeSearchResult
-{
-    public function __construct(private ?Title $title)
-    {
-    }
-
-    public function getTitle(): ?Title
-    {
-        return $this->title;
-    }
-}
-
 /**
  * Opens the protected search-engine surface and stands in for the full-text
  * query, which core answers from searchindex.
  */
 final class TestableSearchEngine extends SubstringTitleSearchEngine
 {
-    /** @var list<FakeSearchResult>|false */
+    /** @var list<SearchResult>|false */
     public array|false $textResults = false;
 
     public int $textSearches = 0;
@@ -218,13 +206,13 @@ class SubstringTitleSearchEngineTest extends TestCase
         $engine->setLimits(3, 0);
         $engine->textResults = [
             // Already suggested as a title match, so it must not appear twice.
-            new FakeSearchResult(self::title(1)),
+            new SearchResult(self::title(1)),
             // A hit without a title, which the full-text query can produce.
-            new FakeSearchResult(null),
-            new FakeSearchResult(self::title(7)),
-            new FakeSearchResult(self::title(8)),
+            new SearchResult(null),
+            new SearchResult(self::title(7)),
+            new SearchResult(self::title(8)),
             // One more than there is room for.
-            new FakeSearchResult(self::title(9)),
+            new SearchResult(self::title(9)),
         ];
 
         self::assertSame(
@@ -258,7 +246,7 @@ class SubstringTitleSearchEngineTest extends TestCase
     {
         $engine = $this->engine([], 0, ['ImproveSearchSuggestContentMatches' => false]);
         $engine->setLimits(5, 0);
-        $engine->textResults = [new FakeSearchResult(self::title(7))];
+        $engine->textResults = [new SearchResult(self::title(7))];
 
         self::assertSame([], self::dbKeys($engine->completionSearch('bridge')));
         self::assertSame(0, $engine->textSearches);

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PHPUnit config for tests that run inside a real MediaWiki environment
+  (MediaWikiIntegrationTestCase). Invoked from inside the docker MW
+  container by `composer test:integration`. Do not invoke directly with
+  our local PHPUnit: these tests need MW core's autoloader and
+  bootstrap.integration.php to be loaded first.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd"
+         bootstrap="/var/www/html/tests/phpunit/bootstrap.integration.php"
+         colors="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         beStrictAboutOutputDuringTests="true"
+         stderr="true">
+  <php>
+    <ini name="memory_limit" value="-1"/>
+    <ini name="max_execution_time" value="0"/>
+  </php>
+  <testsuites>
+    <testsuite name="improvesearch-integration">
+      <directory suffix="Test.php">tests/phpunit/Integration</directory>
+    </testsuite>
+  </testsuites>
+  <extensions>
+    <extension class="MediaWikiLoggerPHPUnitExtension"/>
+    <extension class="MediaWikiTeardownPHPUnitExtension"/>
+  </extensions>
+</phpunit>

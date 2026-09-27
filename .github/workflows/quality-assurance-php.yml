@@ -1,0 +1,36 @@
+name: 'PHP Quality Assurance'
+on:
+  pull_request:
+    paths:
+      - '**.php'
+      - 'composer.*'
+      - 'phpcs.*'
+      - 'phpstan.*'
+  # Also run on every push to main so Codecov's snapshot of the
+  # default branch always carries a fresh PHP-unit coverage upload,
+  # even when the PR that just merged didn't touch any PHP files.
+  push:
+    branches: [main]
+jobs:
+  lint-php:
+    uses: inpsyde/reusable-workflows/.github/workflows/lint-php.yml@main
+    strategy:
+      matrix:
+        php:
+          - '8.4'
+    with:
+      PHP_VERSION: '${{ matrix.php }}'
+  coding-standards-php:
+    uses: inpsyde/reusable-workflows/.github/workflows/coding-standards-php.yml@main
+    with:
+      PHP_VERSION: '8.4'
+  static-analysis-php:
+    uses: inpsyde/reusable-workflows/.github/workflows/static-analysis-php.yml@main
+    with:
+      PHP_VERSION: '8.4'
+  unit-tests-php:
+    uses: inpsyde/reusable-workflows/.github/workflows/tests-unit-php.yml@feature/188-codecov-support-unit-tests-php
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    with:
+      PHP_VERSION: '8.4'

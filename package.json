@@ -1,0 +1,45 @@
+{
+    "name": "improvesearch",
+    "description": "MediaWiki extension that widens the built-in MySQL search: substring page titles, a wikitext-free search index and snippets, and no pointless thumbnail lookups.",
+    "version": "1.0.0",
+    "author": {
+        "name": "Philipp Bammes",
+        "url": "https://github.com/tyrann0us"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.63.0",
+        "@wordpress/eslint-plugin": "^25.6.0",
+        "@wordpress/scripts": "^36.0.0",
+        "jest": "^30.5.2",
+        "jest-environment-jsdom": "^30.5.2"
+    },
+    "engines": {
+        "node": "^20.19.0 || ^22.13.0 || >=24.0.0"
+    },
+    "jest": {
+        "testEnvironment": "jsdom",
+        "testMatch": [
+            "<rootDir>/tests/jest/**/*.test.js"
+        ],
+        "resetModules": true,
+        "restoreMocks": true,
+        "collectCoverageFrom": [
+            "resources/**/*.js"
+        ]
+    },
+    "license": "MIT",
+    "overrides": {
+        "prettier": "npm:wp-prettier@^3.9.6"
+    },
+    "scripts": {
+        "docker:down": "docker compose down -v",
+        "docker:up": "docker compose up -d && docker compose exec -e INSTALL_DEV_DEPS=1 wiki bash /var/www/html/extensions/ImproveSearch/.docker/setup-wiki.sh",
+        "lint:js": "wp-scripts lint-js '**/*.js'",
+        "lint:md": "wp-scripts lint-md-docs '**/*.md'",
+        "test": "jest",
+        "test:coverage": "jest --coverage",
+        "test:e2e": "npx playwright test --config=tests/playwright/playwright.config.js",
+        "test:e2e:headed": "npx playwright test --config=tests/playwright/playwright.config.js --headed",
+        "test:watch": "jest --watch"
+    }
+}

@@ -1,0 +1,73 @@
+name: 'Integration Tests'
+on:
+  pull_request:
+    paths:
+      - '**.php'
+      - 'composer.*'
+      - 'extension.json'
+      - 'docker-compose.yml'
+      - '.docker/**'
+      - 'tests/phpunit/Integration/**'
+      - 'phpunit.integration.xml.dist'
+  # Also run on every push to main so Codecov's snapshot of the
+  # default branch always carries a fresh integration-coverage
+  # upload, even when the PR that just merged didn't touch any
+  # PHP / integration-test files.
+  push:
+    branches: [main]
+
+jobs:
+  phpunit-mwit:
+    # PHPUnit tests that extend MediaWikiIntegrationTestCase. They run
+    # inside the docker MW container (real MW 1.44, real MariaDB) and
+    # so cannot reuse the host-PHP `tests-unit-php` workflow.
+    name: 'PHPUnit (MediaWikiIntegrationTestCase)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Start docker compose
+        run: docker compose up -d
+
+      - name: Wait for wiki to be reachable
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/ > /dev/null 2>&1; then
+              echo "Wiki is up."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Wiki failed to come up." >&2
+          docker compose logs wiki >&2
+          exit 1
+
+      - name: Run wiki setup (installs MW dev deps + test config)
+        run: docker compose exec -T -e INSTALL_DEV_DEPS=1 wiki bash /var/www/html/extensions/ImproveSearch/.docker/setup-wiki.sh
+
+      - name: Run MWIT integration suite (with coverage)
+        run: |
+          docker compose exec -T wiki php \
+            -d pcov.directory=/var/www/html/extensions/ImproveSearch/src \
+            /var/www/html/tests/phpunit/phpunit.php \
+            --configuration=/var/www/html/extensions/ImproveSearch/phpunit.integration.xml.dist \
+            --coverage-clover=/tmp/integration-clover.xml \
+            --coverage-filter=/var/www/html/extensions/ImproveSearch/src
+
+      - name: Extract coverage report and normalise paths
+        run: |
+          docker compose cp wiki:/tmp/integration-clover.xml ./integration-clover.xml
+          # Rewrite container-absolute paths to repo-relative ones so
+          # Codecov can match them against the source tree it sees.
+          sed -i 's|/var/www/html/extensions/ImproveSearch/||g' ./integration-clover.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./integration-clover.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose logs

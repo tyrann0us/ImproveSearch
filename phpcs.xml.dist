@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<ruleset>
+  <!-- Use colors, and show sniff error codes and progress. -->
+  <arg name="colors"/>
+  <arg value="sp"/>
+  <!-- Recommended Syde PHP Coding Standard rules. -->
+  <rule ref="Syde-Extra"/>
+  <!-- PSR-4 namespace configuration. -->
+  <rule ref="SlevomatCodingStandard.Files.TypeNameMatchesFileName">
+    <properties>
+      <property name="rootNamespaces" type="array">
+        <element key="src" value="MediaWiki\Extension\ImproveSearch"/>
+        <element key="tests/phpunit" value="MediaWiki\Extension\ImproveSearch\Tests"/>
+      </property>
+    </properties>
+  </rule>
+  <exclude-pattern>*/vendor/*</exclude-pattern>
+  <config name="testVersion" value="8.4-"/>
+  <config name="text_domain" value="improvesearch"/>
+  <file>./src</file>
+</ruleset>

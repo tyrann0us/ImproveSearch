@@ -1,0 +1,39 @@
+services:
+  wiki:
+    image: mediawiki:1.44
+    ports:
+      - '8080:80'
+    volumes:
+      - .:/var/www/html/extensions/ImproveSearch
+      - /var/www/html/extensions/ImproveSearch/vendor
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      - PHP_INI_MEMORY_LIMIT=256M
+
+  # MariaDB, not SQLite: the search engine extends SearchMySQL, and the
+  # substring matching relies on CONVERT(… USING utf8mb4) COLLATE
+  # utf8mb4_unicode_ci. There is nothing to test on any other backend.
+  database:
+    image: mariadb:11
+    # The test corpus searches for short tokens ("old", "7"). InnoDB's
+    # full-text parser drops anything shorter than innodb_ft_min_token_size
+    # (default 3), and MediaWiki's searchindex is InnoDB.
+    command: ['--innodb-ft-min-token-size=2']
+    environment:
+      MARIADB_DATABASE: testwiki
+      MARIADB_USER: wikiuser
+      MARIADB_PASSWORD: wikipassword
+      MARIADB_ROOT_PASSWORD: rootpassword
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  db-data:

@@ -1,0 +1,106 @@
+{
+  "name": "ImproveSearch",
+  "version": "1.0.0",
+  "author": [
+    "[https://github.com/tyrann0us Philipp Bammes]"
+  ],
+  "url": "https://github.com/tyrann0us/ImproveSearch",
+  "descriptionmsg": "improvesearch-desc",
+  "license-name": "MIT",
+  "type": "search",
+  "requires": {
+    "MediaWiki": ">= 1.44"
+  },
+  "load_composer_autoloader": true,
+  "AutoloadNamespaces": {
+    "MediaWiki\\Extension\\ImproveSearch\\": "src/"
+  },
+  "callback": "MediaWiki\\Extension\\ImproveSearch\\Infrastructure\\MediaWiki\\Setup::onRegistration",
+  "config": {
+    "ImproveSearchCleanIndexText": {
+      "value": true,
+      "description": "Feed the search index and the result snippets with readable plain text instead of raw wikitext. Replaces the content handler for CONTENT_MODEL_WIKITEXT.",
+      "public": true
+    },
+    "ImproveSearchStripFiles": {
+      "value": true,
+      "description": "Drop file and media embeds, including their captions, from the indexed text. Only in effect when ImproveSearchCleanIndexText is true.",
+      "public": true
+    },
+    "ImproveSearchStripTemplates": {
+      "value": true,
+      "description": "Drop template calls and their parameters from the indexed text. Only in effect when ImproveSearchCleanIndexText is true.",
+      "public": true
+    },
+    "ImproveSearchKeepTemplateParams": {
+      "value": [],
+      "description": "Templates whose parameter values should stay in the search index even though template calls are stripped. A template name mapped to the list of parameters to keep. Only the values are indexed, never the parameter names. Example: { \"Address\": [ \"street\", \"number\" ] }",
+      "public": true
+    },
+    "ImproveSearchSubstringTitles": {
+      "value": true,
+      "description": "Match the search term anywhere in the page title instead of only at the beginning. MySQL and MariaDB only.",
+      "public": true
+    },
+    "ImproveSearchSuggestContentMatches": {
+      "value": true,
+      "description": "Top up the search box suggestion list with pages that carry the term in their text once the title matches run out. Additive: title matches keep their places, and nothing extra runs while they still fill the list. Requires ImproveSearchSubstringTitles.",
+      "public": true
+    },
+    "ImproveSearchIgnoreRedirects": {
+      "value": true,
+      "description": "Keep redirects out of search results and suggestions. A redirect is a signpost, not a result: listing it sends the reader to the same article twice under two names.",
+      "public": true
+    },
+    "ImproveSearchSkipUnusedThumbnails": {
+      "value": true,
+      "description": "Stop Special:Search from fetching a PageImages thumbnail for every hit in namespaces that never display one. Has no effect when $wgThumbnailNamespaces lists namespaces beyond NS_FILE.",
+      "public": true
+    },
+    "ImproveSearchDeferSearchThumbnails": {
+      "value": true,
+      "description": "Keep the page images out of the mobile search overlay's own request and fetch them afterwards, so the result list appears without waiting for the slowest thumbnail. Needs PageImages and MobileFrontend.",
+      "public": true
+    }
+  },
+  "manifest_version": 2,
+  "MessagesDirs": {
+    "ImproveSearch": [
+      "i18n"
+    ]
+  },
+  "ResourceFileModulePaths": {
+    "localBasePath": "",
+    "remoteExtPath": "ImproveSearch"
+  },
+  "ResourceModules": {
+    "ext.improveSearch.deferredThumbnails": {
+      "scripts": [
+        "resources/deferred-thumbnails.js"
+      ],
+      "targets": [
+        "desktop",
+        "mobile"
+      ],
+      "dependencies": [
+        "mediawiki.api"
+      ]
+    }
+  },
+  "SearchMappings": {
+    "ImproveSearch": {
+      "class": "MediaWiki\\Extension\\ImproveSearch\\Infrastructure\\MediaWiki\\SubstringTitleSearchEngine"
+    }
+  },
+  "HookHandlers": {
+    "main": {
+      "class": "MediaWiki\\Extension\\ImproveSearch\\Infrastructure\\MediaWiki\\HookHandler",
+      "services": [
+        "MainConfig"
+      ]
+    }
+  },
+  "Hooks": {
+    "BeforePageDisplay": "main"
+  }
+}

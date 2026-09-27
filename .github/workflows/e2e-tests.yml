@@ -1,0 +1,25 @@
+name: 'E2E Tests'
+on:
+  pull_request:
+    paths:
+      - '**.php'
+      - '**.js'
+      - 'extension.json'
+      - 'docker-compose.yml'
+      - '.docker/**'
+      - 'tests/playwright/**'
+jobs:
+  e2e-playwright:
+    uses: inpsyde/reusable-workflows/.github/workflows/test-playwright.yml@main
+    with:
+      NODE_VERSION: '22'
+      PLAYWRIGHT_SCRIPT: 'test:e2e'
+      PLAYWRIGHT_ARTIFACT_PATH: 'test-results/'
+      PLAYWRIGHT_ARTIFACT_RETENTION_DAYS: 7
+      PRE_SCRIPT: |
+        docker compose up -d
+        for i in $(seq 1 30); do
+          if curl -sf http://localhost:8080/ > /dev/null 2>&1; then break; fi
+          sleep 2
+        done
+        docker compose exec -T wiki bash /var/www/html/extensions/ImproveSearch/.docker/setup-wiki.sh

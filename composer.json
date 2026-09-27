@@ -1,0 +1,47 @@
+{
+  "name": "tyrann0us/improvesearch",
+  "description": "MediaWiki extension that widens the built-in MySQL search: substring page titles, a wikitext-free search index and snippets, and no pointless thumbnail lookups.",
+  "license": "MIT",
+  "type": "mediawiki-extension",
+  "keywords": [
+    "mediawiki",
+    "search",
+    "mysql"
+  ],
+  "require": {
+    "php": ">=8.4",
+    "ext-mbstring": "*"
+  },
+  "require-dev": {
+    "phpstan/phpstan": "^2.2.1",
+    "phpunit/phpunit": "^13.1.13",
+    "syde/phpcs": "^1.0.1"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "autoload": {
+    "psr-4": {
+      "MediaWiki\\Extension\\ImproveSearch\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "MediaWiki\\Extension\\ImproveSearch\\Tests\\": "tests/phpunit/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    },
+    "optimize-autoloader": true,
+    "sort-packages": true
+  },
+  "scripts": {
+    "phpcs": "@php ./vendor/bin/phpcs",
+    "phpcs:fix": "@php ./vendor/bin/phpcbf",
+    "phpstan": "@php ./vendor/bin/phpstan analyse --memory-limit=1G",
+    "tests": "@php ./vendor/bin/phpunit",
+    "tests:coverage": "@php ./vendor/bin/phpunit --coverage-clover=coverage.xml",
+    "tests:integration": "docker compose exec -T wiki php /var/www/html/tests/phpunit/phpunit.php --configuration=/var/www/html/extensions/ImproveSearch/phpunit.integration.xml.dist --testdox"
+  }
+}

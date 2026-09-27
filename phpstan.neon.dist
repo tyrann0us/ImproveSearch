@@ -1,0 +1,9 @@
+parameters:
+  level: 8
+  paths:
+    - src/
+  treatPhpDocTypesAsCertain: false
+  scanFiles:
+    - tests/phpunit/bootstrap.php
+    - tests/phpunit/stubs/global-classes.php
+    - tests/phpunit/stubs/mediawiki-namespaced.php

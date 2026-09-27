@@ -1,0 +1,8 @@
+{
+	"@metadata": {
+		"authors": [
+			"Philipp Bammes"
+		]
+	},
+	"improvesearch-desc": "Sucht im ganzen Seitennamen, hält Wikitext-Auszeichnung aus Suchindex und Trefferausschnitten heraus und spart Vorschaubilder ein, die Spezial:Suche gar nicht anzeigt"
+}

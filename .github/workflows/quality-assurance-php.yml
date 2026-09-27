@@ -29,7 +29,7 @@ jobs:
     with:
       PHP_VERSION: '8.4'
   unit-tests-php:
-    uses: inpsyde/reusable-workflows/.github/workflows/tests-unit-php.yml@main
+    uses: inpsyde/reusable-workflows/.github/workflows/tests-unit-php.yml@feature/188-codecov-support-unit-tests-php
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:

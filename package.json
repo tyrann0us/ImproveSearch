@@ -1,7 +1,7 @@
 {
     "name": "improvesearch",
     "description": "MediaWiki extension that widens the built-in MySQL search: substring page titles, a wikitext-free search index and snippets, and no pointless thumbnail lookups.",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "author": {
         "name": "Philipp Bammes",
         "url": "https://github.com/tyrann0us"

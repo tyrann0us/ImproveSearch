@@ -36,6 +36,9 @@
     "optimize-autoloader": true,
     "sort-packages": true
   },
+  "extra": {
+    "installer-name": "ImproveSearch"
+  },
   "scripts": {
     "phpcs": "@php ./vendor/bin/phpcs",
     "phpcs:fix": "@php ./vendor/bin/phpcbf",

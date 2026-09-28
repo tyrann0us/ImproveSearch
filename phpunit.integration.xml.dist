@@ -7,12 +7,17 @@
   bootstrap.integration.php to be loaded first.
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.5/phpunit.xsd"
          bootstrap="/var/www/html/tests/phpunit/bootstrap.integration.php"
          colors="true"
+         convertDeprecationsToExceptions="true"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
          beStrictAboutTestsThatDoNotTestAnything="true"
          beStrictAboutOutputDuringTests="true"
-         stderr="true">
+         stderr="true"
+         printerClass="MediaWikiPHPUnitResultPrinter">
   <php>
     <ini name="memory_limit" value="-1"/>
     <ini name="max_execution_time" value="0"/>

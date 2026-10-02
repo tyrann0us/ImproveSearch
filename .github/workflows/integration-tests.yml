@@ -16,6 +16,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   phpunit-mwit:
     # PHPUnit tests that extend MediaWikiIntegrationTestCase. They run

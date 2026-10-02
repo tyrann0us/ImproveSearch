@@ -8,6 +8,10 @@ on:
       - 'docker-compose.yml'
       - '.docker/**'
       - 'tests/playwright/**'
+
+permissions:
+  contents: read
+
 jobs:
   e2e-playwright:
     uses: inpsyde/reusable-workflows/.github/workflows/test-playwright.yml@main

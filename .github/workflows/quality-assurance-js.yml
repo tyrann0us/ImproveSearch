@@ -10,6 +10,10 @@ on:
   # even when the PR that just merged didn't touch any JS files.
   push:
     branches: [main]
+
+permissions:
+  contents: read
+
 jobs:
   unit-tests-js:
     uses: inpsyde/reusable-workflows/.github/workflows/tests-unit-js.yml@feature/188-codecov-support-unit-tests-php

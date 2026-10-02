@@ -5,6 +5,10 @@ on:
     paths:
       - '**.js'
       - '**.md'
+
+permissions:
+  contents: read
+
 jobs:
   wp-scripts-lint:
     uses: inpsyde/reusable-workflows/.github/workflows/wp-scripts-lint.yml@main

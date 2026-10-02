@@ -11,6 +11,10 @@ on:
   # even when the PR that just merged didn't touch any PHP files.
   push:
     branches: [main]
+
+permissions:
+  contents: read
+
 jobs:
   lint-php:
     uses: inpsyde/reusable-workflows/.github/workflows/lint-php.yml@main

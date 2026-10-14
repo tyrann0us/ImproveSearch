@@ -7,9 +7,9 @@
         "url": "https://github.com/tyrann0us"
     },
     "devDependencies": {
-        "@playwright/test": "^1.63.0",
+        "@playwright/test": "^1.64.0",
         "@wordpress/eslint-plugin": "^26.0.0",
-        "@wordpress/scripts": "^36.0.0",
+        "@wordpress/scripts": "^36.1.0",
         "jest": "^30.5.2",
         "jest-environment-jsdom": "^30.5.2"
     },

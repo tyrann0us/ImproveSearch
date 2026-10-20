@@ -4,8 +4,7 @@ updates:
   - package-ecosystem: "composer"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "quarterly"
     cooldown:
       default-days: 3
       semver-major-days: 14
@@ -24,8 +23,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "quarterly"
     cooldown:
       default-days: 3
       semver-major-days: 14
@@ -44,7 +42,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "quarterly"
     cooldown:
       default-days: 3
     groups:

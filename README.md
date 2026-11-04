@@ -122,6 +122,16 @@ Names match regardless of case, underscores, and a localised or canonical namesp
 
 The values land next to each other in the index, so a quoted search is exact. `"Main Street 12"` returns the one page at that address, while the unquoted `Main Street 12` matches every page containing all three words and leaves the ordering to MySQL's relevance ranking. How well the address page does there depends on how distinctive the street name is. `Wharf Road 7` puts it first, `New Street 4` does not, because "New" and "Street" appear all over the wiki.
 
+On many wikis, file description pages hold nothing but an information template. Stripping templates then leaves them with no indexed text at all, and the whole `File:` namespace falls out of the search. Putting that template's description, source and author parameters on the keep list restores it.
+
+```bash
+# near zero means the File namespace carries no indexed text
+php maintenance/run.php sql --query 'SELECT AVG(LENGTH(si_text)) FROM searchindex s
+  JOIN page p ON p.page_id = s.si_page WHERE p.page_namespace = 6'
+```
+
+The list matches parameters by name, so positional parameters cannot be kept. `{{Quote|text=Some text}}` works; `{{Quote|Some text}}` does not.
+
 The default is an empty list, which keeps nothing. Run `rebuildtextindex` after changing this setting.
 
 ## Thumbnails the result page never shows

@@ -156,7 +156,7 @@
 	 * actually calls.
 	 */
 	function patch() {
-		if ( patched || ! window.mw || ! mw.widgets ) {
+		if ( patched || ! mw.widgets ) {
 			return;
 		}
 

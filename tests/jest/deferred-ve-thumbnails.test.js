@@ -222,6 +222,39 @@ describe( 'deferred VisualEditor thumbnails', () => {
 		] );
 	} );
 
+	it( 'patches once, however often VisualEditor announces itself', () => {
+		const env = createMwEnv( global, {} );
+		const { proto, widget } = createTitleWidget( true );
+		activate( env, proto );
+		const wrapped = proto.getApiParams;
+
+		env.fireHook( 've.activationComplete' );
+
+		expect( proto.getApiParams ).toBe( wrapped );
+		expect( widget.getApiParams( 'weber' ).prop ).toEqual( [
+			'info',
+			'pageprops',
+		] );
+	} );
+
+	it( 'waits for the title widgets if they are not there yet', () => {
+		const env = createMwEnv( global, {} );
+		global.mw = env.mw;
+		global.mw.widgets = {};
+		jest.resetModules();
+		require( RESOURCE );
+		env.fireHook( 've.activationComplete' );
+
+		const { proto, widget } = createTitleWidget( true );
+		global.mw.widgets = { TitleWidget: { prototype: proto } };
+		env.fireHook( 've.activationComplete' );
+
+		expect( widget.getApiParams( 'weber' ).prop ).toEqual( [
+			'info',
+			'pageprops',
+		] );
+	} );
+
 	it( 'survives an API error without breaking the menu', async () => {
 		const env = createMwEnv( global, {} );
 		const { proto, widget } = createTitleWidget( true );

@@ -148,6 +148,17 @@ namespace MediaWiki\Content {
     }
 }
 
+// ─── MediaWiki\Permissions ────────────────────────────────────────
+
+namespace MediaWiki\Permissions {
+    if (!interface_exists(Authority::class)) {
+        interface Authority
+        {
+            public function isAllowed(string $permission): bool;
+        }
+    }
+}
+
 // ─── MediaWiki\Output ─────────────────────────────────────────────
 
 namespace MediaWiki\Output {
@@ -169,9 +180,9 @@ namespace MediaWiki\Output {
                 }
             }
 
-            public function getAuthority(): object
+            public function getAuthority(): \MediaWiki\Permissions\Authority
             {
-                return new class ($this->mayEdit) {
+                return new class ($this->mayEdit) implements \MediaWiki\Permissions\Authority {
                     public function __construct(private readonly bool $mayEdit)
                     {
                     }

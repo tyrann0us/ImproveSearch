@@ -59,7 +59,7 @@
     },
     "ImproveSearchDeferSearchThumbnails": {
       "value": true,
-      "description": "Keep the page images out of the mobile search overlay's own request and fetch them afterwards, so the result list appears without waiting for the slowest thumbnail. Needs PageImages and MobileFrontend.",
+      "description": "Keep the page images out of the request that fetches the results and fetch them afterwards, so the list appears without waiting for the slowest thumbnail. Covers the mobile search overlay and VisualEditor's title widgets. Needs PageImages, plus MobileFrontend or VisualEditor.",
       "public": true
     }
   },
@@ -78,9 +78,13 @@
       "scripts": [
         "resources/deferred-thumbnails.js"
       ],
-      "targets": [
-        "desktop",
-        "mobile"
+      "dependencies": [
+        "mediawiki.api"
+      ]
+    },
+    "ext.improveSearch.deferredVeThumbnails": {
+      "scripts": [
+        "resources/deferred-ve-thumbnails.js"
       ],
       "dependencies": [
         "mediawiki.api"

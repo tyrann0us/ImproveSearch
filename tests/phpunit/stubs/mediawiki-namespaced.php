@@ -157,12 +157,30 @@ namespace MediaWiki\Output {
             /** @var list<string> */
             public array $modules = [];
 
+            public function __construct(private readonly bool $mayEdit = true)
+            {
+            }
+
             /** @param string|list<string> $modules */
             public function addModules($modules): void
             {
                 foreach ((array) $modules as $module) {
                     $this->modules[] = $module;
                 }
+            }
+
+            public function getAuthority(): object
+            {
+                return new class ($this->mayEdit) {
+                    public function __construct(private readonly bool $mayEdit)
+                    {
+                    }
+
+                    public function isAllowed(string $permission): bool
+                    {
+                        return $this->mayEdit;
+                    }
+                };
             }
         }
     }

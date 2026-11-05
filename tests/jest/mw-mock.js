@@ -76,7 +76,17 @@ function createMwEnv( win, initialConfig ) {
 			} ),
 	};
 
-	win.mw = { config, Api: MwApi, loader };
+	// ── mw.hook ─────────────────────────────────────────────────
+
+	const hooks = {};
+	const hook = ( name ) => ( {
+		add: ( handler ) => {
+			hooks[ name ] = hooks[ name ] || [];
+			hooks[ name ].push( handler );
+		},
+	} );
+
+	win.mw = { config, Api: MwApi, loader, hook };
 
 	// ── Return helpers for tests ────────────────────────────────
 
@@ -84,6 +94,14 @@ function createMwEnv( win, initialConfig ) {
 		mw: win.mw,
 		config,
 		requests,
+
+		/**
+		 * Fire a hook the module under test subscribed to.
+		 *
+		 * @param {string} name
+		 */
+		fireHook: ( name ) =>
+			( hooks[ name ] || [] ).forEach( ( handler ) => handler() ),
 
 		/** Let the pending mw.loader.using( 'mobile.startup' ) settle. */
 		letMobileStartupFinish: () => resolveUsing && resolveUsing(),

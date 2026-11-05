@@ -6,7 +6,7 @@
 [![E2E Tests](https://github.com/tyrann0us/ImproveSearch/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/tyrann0us/ImproveSearch/actions/workflows/e2e-tests.yml)
 [![codecov](https://codecov.io/gh/tyrann0us/ImproveSearch/graph/badge.svg)](https://codecov.io/gh/tyrann0us/ImproveSearch)
 
-Small fixes to MediaWiki's built-in MySQL search. No Elasticsearch, no search daemon, no extra database table. The extension changes what goes into the existing `searchindex` table, how title matches are found, how the result page is assembled, and when the mobile search overlay asks for its thumbnails.
+Small fixes to MediaWiki's built-in MySQL search. No Elasticsearch, no search daemon, no extra database table. The extension changes what goes into the existing `searchindex` table, how title matches are found, how the result page is assembled, and when the search results fetch their thumbnails.
 
 Written for wikis on shared hosting where CirrusSearch is not an option, and small enough to read in one sitting.
 
@@ -22,7 +22,7 @@ Each section below describes one problem, the fix, and the setting that turns it
 * [A search index without wikitext](#a-search-index-without-wikitext)
 * [Keeping selected template parameters](#keeping-selected-template-parameters)
 * [Thumbnails the result page never shows](#thumbnails-the-result-page-never-shows)
-* [Thumbnails after the mobile result list](#thumbnails-after-the-mobile-result-list)
+* [Thumbnails that hold up the results](#thumbnails-that-hold-up-the-results)
 * [Configuration](#configuration)
 * [Development](#development)
 * [Scope and limits](#scope-and-limits)
@@ -122,6 +122,16 @@ Names match regardless of case, underscores, and a localised or canonical namesp
 
 The values land next to each other in the index, so a quoted search is exact. `"Main Street 12"` returns the one page at that address, while the unquoted `Main Street 12` matches every page containing all three words and leaves the ordering to MySQL's relevance ranking. How well the address page does there depends on how distinctive the street name is. `Wharf Road 7` puts it first, `New Street 4` does not, because "New" and "Street" appear all over the wiki.
 
+On many wikis, file description pages hold nothing but an information template. Stripping templates then leaves them with no indexed text at all, and the whole `File:` namespace falls out of the search. Putting that template's description, source and author parameters on the keep list restores it.
+
+```bash
+# near zero means the File namespace carries no indexed text
+php maintenance/run.php sql --query 'SELECT AVG(LENGTH(si_text)) FROM searchindex s
+  JOIN page p ON p.page_id = s.si_page WHERE p.page_namespace = 6'
+```
+
+The list matches parameters by name, so positional parameters cannot be kept. `{{Quote|text=Some text}}` works; `{{Quote|Some text}}` does not.
+
 The default is an empty list, which keeps nothing. Run `rebuildtextindex` after changing this setting.
 
 ## Thumbnails the result page never shows
@@ -134,13 +144,18 @@ The extension turns the option off by default, but only when `$wgThumbnailNamesp
 
 Set `$wgImproveSearchSkipUnusedThumbnails = false;` to keep core's default in every configuration.
 
-## Thumbnails after the mobile result list
+## Thumbnails that hold up the results
 
-MobileFrontend asks for the page images in the same request as the results, so nothing appears until the slowest image is known. On a cold cache a fifteen-hit search took between two and eight seconds instead of a third of one, because MediaWiki fetches the file data from the foreign repository before it answers at all.
+Two places ask for the page images in the same request as the results, and MediaWiki fetches the file data from the foreign repository before it answers at all. Nothing appears until the slowest image is known.
 
-The extension drops the image parameters from that request. The list appears with the placeholder icons MobileFrontend renders anyway, and a second request fills the images in. The script only loads on the Minerva skin and only when both PageImages and MobileFrontend are installed.
+* MobileFrontend's search overlay. On a cold cache a fifteen-hit search took between two and eight seconds instead of a third of one.
+* VisualEditor's title widgets, the link dialog above all, where every keystroke waits. One lookup took between 1.4 and 3.0 seconds instead of half of one.
 
-Set `$wgImproveSearchDeferSearchThumbnails = false;` to let MobileFrontend fetch the images with the results again.
+In both cases the extension drops the image parameters from that request. The list appears with the placeholder icons they render anyway, and a second request fills the images in.
+
+The overlay script loads on the Minerva skin, and only when PageImages and MobileFrontend are installed. The VisualEditor one loads for readers who may edit, and patches the widget when VisualEditor announces `ve.activationComplete`, late enough that `mediawiki.widgets` is never pulled in for its sake.
+
+Set `$wgImproveSearchDeferSearchThumbnails = false;` to let both fetch their images with the results again.
 
 ## Configuration
 
@@ -156,7 +171,7 @@ All switches default to on, except the keep list, which defaults to empty. Each 
 | `$wgImproveSearchStripTemplates`        | `true`  | Drop template calls and their parameters from the indexed text.                   |
 | `$wgImproveSearchKeepTemplateParams`    | `[]`    | Exceptions to the line above: templates whose parameter values stay in the index. |
 | `$wgImproveSearchSkipUnusedThumbnails`  | `true`  | Stop the pointless PageImages lookup per hit.                                     |
-| `$wgImproveSearchDeferSearchThumbnails` | `true`  | Fetch the mobile overlay's thumbnails after the result list, not with it.         |
+| `$wgImproveSearchDeferSearchThumbnails` | `true`  | Fetch the thumbnails after the result list, not with it.                          |
 
 The extension never overrules a wiki that has an opinion of its own. It stays out of the way when:
 

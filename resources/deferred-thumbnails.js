@@ -163,10 +163,10 @@
 		setTimeout( fill, 0 );
 	}
 
-	// MobileFrontend does not put these variables into the startup module. It
-	// ships them inside mobile.startup and sets them when that module runs,
-	// which is after this one. Stripping them only now would be undone, so do
-	// it again once MobileFrontend has had its say.
+	// MobileFrontend publishes these variables from its own ResourceLoader
+	// config module and writes them again when mobile.startup runs, which is
+	// after this one. Stripping them only now would be undone, so do it again
+	// once MobileFrontend has had its say.
 	stripImageParams();
 	mw.loader.using( 'mobile.startup' ).then( stripImageParams, () => {} );
 

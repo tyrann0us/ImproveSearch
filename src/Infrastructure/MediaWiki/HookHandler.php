@@ -16,18 +16,15 @@ class HookHandler implements BeforePageDisplayHook
     /** Skin that carries MobileFrontend's search overlay. */
     private const OVERLAY_SKIN = 'minerva';
 
-    /** Both have to be installed, or there is nothing to defer. */
-    private const REQUIRED_EXTENSIONS = ['PageImages', 'MobileFrontend'];
-
     public function __construct(private readonly Config $config)
     {
     }
 
     /**
-     * Load the module that fetches the search overlay's page images
-     * separately. Only where all three parts of the problem are present: the
-     * overlay itself, PageImages as the source of the thumbnails, and
-     * MobileFrontend, which welds the two together without asking.
+     * Load the modules that fetch page images separately. Two places ask for
+     * them in the same request as the results: MobileFrontend's search
+     * overlay and VisualEditor's title widgets. Both need PageImages as the
+     * source of the thumbnails, and each needs its own extension on top.
      *
      * ExtensionRegistry is not a service in MediaWikiServices, so it is read
      * from its singleton rather than injected.
@@ -42,17 +39,20 @@ class HookHandler implements BeforePageDisplayHook
             return;
         }
 
-        if ($skin->getSkinName() !== self::OVERLAY_SKIN) {
+        $registry = ExtensionRegistry::getInstance();
+        if (!$registry->isLoaded('PageImages')) {
             return;
         }
 
-        $registry = ExtensionRegistry::getInstance();
-        foreach (self::REQUIRED_EXTENSIONS as $extension) {
-            if (!$registry->isLoaded($extension)) {
-                return;
-            }
+        if ($skin->getSkinName() === self::OVERLAY_SKIN && $registry->isLoaded('MobileFrontend')) {
+            $out->addModules(['ext.improveSearch.deferredThumbnails']);
         }
 
-        $out->addModules(['ext.improveSearch.deferredThumbnails']);
+        // The title widgets carry the problem on every skin, but only for
+        // readers who can open the editor at all. For anyone else the module
+        // would sit on the page waiting for a hook that never fires.
+        if ($registry->isLoaded('VisualEditor') && $out->getAuthority()->isAllowed('edit')) {
+            $out->addModules(['ext.improveSearch.deferredVeThumbnails']);
+        }
     }
 }

@@ -17,6 +17,7 @@ use Skin;
 class HookHandlerTest extends TestCase
 {
     private const MODULE = 'ext.improveSearch.deferredThumbnails';
+    private const VE_MODULE = 'ext.improveSearch.deferredVeThumbnails';
 
     /**
      * @return array<string, array{bool, string, list<string>}>
@@ -56,6 +57,58 @@ class HookHandlerTest extends TestCase
         $this->handler(true)->onBeforePageDisplay($out, new Skin('minerva'));
 
         self::assertSame([self::MODULE], $out->modules);
+    }
+
+    /**
+     * @return array<string, array{bool, list<string>}>
+     */
+    public static function silentVeProvider(): array
+    {
+        return [
+            'switch off' => [false, ['PageImages', 'VisualEditor']],
+            'no PageImages' => [true, ['VisualEditor']],
+            'no VisualEditor' => [true, ['PageImages']],
+        ];
+    }
+
+    /**
+     * @param list<string> $loadedExtensions
+     */
+    #[DataProvider('silentVeProvider')]
+    public function testStaysOutOfVisualEditorsWay(bool $enabled, array $loadedExtensions): void
+    {
+        ExtensionRegistry::setInstanceForTesting($loadedExtensions);
+        $out = new OutputPage();
+
+        $this->handler($enabled)->onBeforePageDisplay($out, new Skin('vector-2022'));
+
+        self::assertSame([], $out->modules);
+    }
+
+    /**
+     * Unlike the overlay, the title widgets carry the problem on every skin.
+     */
+    public function testLoadsTheVisualEditorModuleOnAnySkin(): void
+    {
+        ExtensionRegistry::setInstanceForTesting(['PageImages', 'VisualEditor']);
+        $out = new OutputPage();
+
+        $this->handler(true)->onBeforePageDisplay($out, new Skin('vector-2022'));
+
+        self::assertSame([self::VE_MODULE], $out->modules);
+    }
+
+    /**
+     * The module is only worth loading for someone who can open the editor.
+     */
+    public function testSkipsTheVisualEditorModuleForReadersWhoCannotEdit(): void
+    {
+        ExtensionRegistry::setInstanceForTesting(['PageImages', 'VisualEditor']);
+        $out = new OutputPage(false);
+
+        $this->handler(true)->onBeforePageDisplay($out, new Skin('vector-2022'));
+
+        self::assertSame([], $out->modules);
     }
 
     private function handler(bool $enabled): HookHandler

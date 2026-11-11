@@ -109,6 +109,17 @@ if (!class_exists(SearchMySQL::class)) {
             return false;
         }
 
+        /**
+         * The real one also hex-escapes every multibyte character. The tests
+         * need the case folding that comes before it, nothing else.
+         *
+         * @param string $string
+         */
+        public function normalizeText($string): string
+        {
+            return mb_strtolower((string) $string);
+        }
+
         public function setLimitOffset(int $limit, int $offset = 0): void
         {
             $this->limit = $limit;

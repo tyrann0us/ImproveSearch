@@ -170,6 +170,32 @@ class SubstringTitleSearchEngineTest extends TestCase
         return array_map(static fn (Title $title): string => $title->dbKey, $suggestions->titles);
     }
 
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function punctuationProvider(): array
+    {
+        return [
+            'quotation marks' => ['„Stone Bridge“', ' stone bridge '],
+            'dash between the years' => ['1890–1902', '1890 1902'],
+            'no-break space' => ['No. 3', 'no. 3'],
+            'letters stay' => ['Zürich', 'zürich'],
+            'ascii is left to core' => ['Bakery Row (No. 3)', 'bakery row (no. 3)'],
+        ];
+    }
+
+    /**
+     * Everything above ASCII counts as a search character in core, and the
+     * parent escapes it onto the word next to it.
+     */
+    #[DataProvider('punctuationProvider')]
+    public function testSeparatesPunctuationFromTheWordsAroundIt(
+        string $input,
+        string $expected
+    ): void {
+        self::assertSame($expected, $this->engine()->normalizeText($input));
+    }
+
     public function testEmptyTermIsLeftToCore(): void
     {
         $engine = $this->engine([self::row(1, 'Stone_Bridge')]);

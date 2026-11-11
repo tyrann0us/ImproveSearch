@@ -179,6 +179,28 @@ class SubstringTitleSearchEngine extends SearchMySQL
     }
 
     /**
+     * Text on its way into the index and terms on their way into a query.
+     *
+     * Core counts every byte above ASCII as a search character, so
+     * typographic punctuation reaches the hex escaping in the parent, which
+     * glues it to the neighbouring word: a quoted name turns into one token
+     * nobody types. Everything above ASCII that is not a letter, a number
+     * or a mark becomes a space first. Letters pass through untouched, so
+     * umlauts still fold the way the parent folds them.
+     *
+     * @param string $string
+     */
+    // phpcs:ignore Syde.Functions.ArgumentTypeDeclaration.NoArgumentType -- SearchEngine signature
+    public function normalizeText($string): string
+    {
+        $string = (string) $string;
+
+        return parent::normalizeText(
+            preg_replace('/[^\x00-\x7F\p{L}\p{N}\p{M}]/u', ' ', $string) ?? $string
+        );
+    }
+
+    /**
      * Core adds this to both the text query and its count query, which is
      * exactly where the pages already listed as title matches have to drop
      * out.

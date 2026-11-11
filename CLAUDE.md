@@ -120,6 +120,8 @@ MobileFrontend's search request, then fills the images in from a second one
 
 **Title matches are remembered.** `SubstringTitleSearchEngine::$titleMatchIds` is filled by `matchingTitles()` and subtracted in `queryFeatures()`, which core applies to both the text query and its count query. Without it a page matching by name *and* text is listed twice and counted twice.
 
+**Normalisation serves both directions.** `SubstringTitleSearchEngine::normalizeText()` is called by `SearchUpdate` when a page is indexed and by `parseQuery()` when someone searches. A change there has to make sense for both, and pages indexed before it need `rebuildtextindex`.
+
 **Changing an index-shaping setting needs `rebuildtextindex`.** `ImproveSearchCleanIndexText`, `…StripFiles`, `…StripTemplates`, `…KeepTemplateParams` and `…IgnoreRedirects` only affect pages indexed after the change.
 
 **PHPUnit suite is standalone.** It is bootstrapped from `tests/phpunit/bootstrap.php` with hand-written stubs under `tests/phpunit/stubs/`. It does not extend `MediaWikiIntegrationTestCase`. Use `createStub()`, not `createMock()`: PHPUnit 13 emits "no expectations configured" notices for mocks without expectations.

@@ -136,7 +136,7 @@ The default is an empty list, which keeps nothing. Run `rebuildtextindex` after 
 
 ## Thumbnails the result page never shows
 
-`FullSearchResultWidget::generateFileHtml()` asks PageImages for a thumbnail for every hit as soon as the user option `search-thumbnail-extra-namespaces` is set, and MediaWiki ships it enabled. Outside `NS_FILE` the thumbnail is then thrown away again, because the widget only renders one for the namespaces in `$wgThumbnailNamespaces`. On a wiki of 3,800 pages that was about 0.25 s per hit, roughly seven seconds for a page of twenty results.
+`FullSearchResultWidget::generateFileHtml()` asks PageImages for a thumbnail for every hit as soon as the user option `search-thumbnail-extra-namespaces` is set, and MediaWiki ships it enabled. Outside `NS_FILE` the thumbnail is then thrown away again, because the widget only renders one for the namespaces in `$wgThumbnailNamespaces`. A page of twenty results pays for twenty lookups into the file repository, and shows none of them.
 
 There is a second half to this worth naming. `DefaultPreferencesFactory` registers the checkbox in `Special:Preferences` only when `$wgThumbnailNamespaces` holds more than `NS_FILE`. Under the default configuration the preference is therefore invisible and no user can switch it off, while its default value of `true` keeps triggering the lookup on every hit.
 
@@ -148,8 +148,8 @@ Set `$wgImproveSearchSkipUnusedThumbnails = false;` to keep core's default in ev
 
 Two places ask for the page images in the same request as the results, and MediaWiki fetches the file data from the foreign repository before it answers at all. Nothing appears until the slowest image is known.
 
-* Minerva's typeahead search, where the `search/title` endpoint looks the images up for every hit. On a cold cache a ten-hit lookup took between 1.3 and 4.4 seconds instead of half of one.
-* VisualEditor's title widgets, the link dialog above all, where every keystroke waits. One lookup took between 1.4 and 3.0 seconds instead of half of one.
+* Minerva's typeahead search, where the `search/title` endpoint looks the images up for every hit. On a cold cache the images take several times as long as the search itself.
+* VisualEditor's title widgets, the link dialog above all, where every keystroke waits for the same thing.
 
 In both cases the images stay out of that request, and a second one fills them into the placeholder icons they render anyway.
 

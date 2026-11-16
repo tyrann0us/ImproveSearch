@@ -3,9 +3,8 @@
  *
  * mw.widgets.TitleWidget asks for prop=pageimages in the same request as the
  * titles, so MediaWiki fetches the file data from the foreign repository
- * before it answers at all. Every keystroke in the link dialog waits for it.
- * Measured against a cold cache, one lookup took between 1.4 and 3.0 seconds
- * instead of half of one.
+ * before it answers at all. Every keystroke in the link dialog waits for it,
+ * and against a cold cache that wait is several times the lookup itself.
  *
  * So: drop the image parameters from that request, let the menu appear with
  * the article icons the widget renders anyway, and fill the images in

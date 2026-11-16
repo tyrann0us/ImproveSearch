@@ -4,8 +4,7 @@
  * The REST endpoint behind the Codex typeahead looks up a thumbnail for every
  * hit before it answers, and MediaWiki fetches the file data from the foreign
  * repository first, so the whole list waits for the slowest image. On a cold
- * cache a ten-hit lookup took between 1.3 and 4.4 seconds instead of half of
- * one.
+ * cache that wait is several times the search itself.
  *
  * So: ask the endpoint to leave the images out, let the menu appear with the
  * placeholder icons it renders anyway, and fill them in from a second request.

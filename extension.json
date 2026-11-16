@@ -9,7 +9,7 @@
   "license-name": "MIT",
   "type": "search",
   "requires": {
-    "MediaWiki": ">= 1.44"
+    "MediaWiki": ">= 1.46"
   },
   "load_composer_autoloader": true,
   "AutoloadNamespaces": {
@@ -59,7 +59,7 @@
     },
     "ImproveSearchDeferSearchThumbnails": {
       "value": true,
-      "description": "Keep the page images out of the request that fetches the results and fetch them afterwards, so the list appears without waiting for the slowest thumbnail. Covers the mobile search overlay and VisualEditor's title widgets. Needs PageImages, plus MobileFrontend or VisualEditor.",
+      "description": "Keep the page images out of the request that fetches the results and fetch them afterwards, so the list appears without waiting for the slowest thumbnail. Covers Minerva's Codex typeahead and VisualEditor's title widgets. Needs PageImages.",
       "public": true
     }
   },

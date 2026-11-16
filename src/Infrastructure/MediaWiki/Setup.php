@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MediaWiki\Extension\ImproveSearch\Infrastructure\MediaWiki;
 
 use MediaWiki\Content\WikitextContentHandler;
+use MediaWiki\Context\RequestContext;
 use MediaWiki\MainConfigNames;
 use MediaWiki\Settings\SettingsBuilder;
 
@@ -17,6 +18,9 @@ use MediaWiki\Settings\SettingsBuilder;
  */
 final class Setup
 {
+    /** Query parameter the typeahead module adds to its search request. */
+    public const THUMBNAIL_OPT_OUT = 'improvesearchthumbs';
+
     /** Search engine name registered under "SearchMappings" in extension.json. */
     private const SEARCH_TYPE = 'ImproveSearch';
 
@@ -48,6 +52,10 @@ final class Setup
 
         if ($config->get('ImproveSearchSkipUnusedThumbnails')) {
             self::skipUnusedThumbnails($settings);
+        }
+
+        if ($config->get('ImproveSearchDeferSearchThumbnails')) {
+            self::answerTypeaheadWithoutThumbnails($settings);
         }
     }
 
@@ -97,6 +105,35 @@ final class Setup
         }
 
         $settings->overrideConfigValue(MainConfigNames::SearchType, self::SEARCH_TYPE);
+    }
+
+    /**
+     * Let the search endpoint behind the typeahead answer without thumbnails.
+     *
+     * Rest\Handler\SearchHandler looks up an image for every hit before it
+     * answers, and the file data comes from the foreign repository, so the
+     * list waits for the slowest image. Our module asks for the list without
+     * them, by the query parameter read here, and fetches them afterwards.
+     *
+     * Added to the Hooks setting on purpose. Handlers from there run before
+     * those from extension.json, and only a handler that returns false ends
+     * the chain before PageImages fills the thumbnails in. A handler declared
+     * in extension.json would have to be void, like the hook interface, and
+     * could not stop anything.
+     */
+    private static function answerTypeaheadWithoutThumbnails(SettingsBuilder $settings): void
+    {
+        $hooks = (array) $settings->getConfig()->get(MainConfigNames::Hooks);
+
+        // The hook's three arguments are of no interest here: either the
+        // request carries the parameter, and then nobody should fill the
+        // thumbnails in, or it does not and the chain runs as usual.
+        $hooks['SearchResultProvideThumbnail'][] = static fn (): ?bool =>
+            RequestContext::getMain()
+                ->getRequest()
+                ->getRawVal(self::THUMBNAIL_OPT_OUT) === '0' ? false : null;
+
+        $settings->overrideConfigValue(MainConfigNames::Hooks, $hooks);
     }
 
     /**

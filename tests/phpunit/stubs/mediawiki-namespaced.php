@@ -49,6 +49,7 @@ namespace MediaWiki {
             public const ContentHandlers = 'ContentHandlers';
             public const DBtype = 'DBtype';
             public const DefaultUserOptions = 'DefaultUserOptions';
+            public const Hooks = 'Hooks';
             public const SearchType = 'SearchType';
             public const ThumbnailNamespaces = 'ThumbnailNamespaces';
         }
@@ -159,6 +160,68 @@ namespace MediaWiki\Permissions {
     }
 }
 
+// ─── MediaWiki\ResourceLoader ─────────────────────────────────────
+
+namespace MediaWiki\ResourceLoader {
+    if (!class_exists(ResourceLoader::class)) {
+        class ResourceLoader
+        {
+            /** @param list<string> $registered */
+            public function __construct(private readonly array $registered = [])
+            {
+            }
+
+            public function isModuleRegistered(string $name): bool
+            {
+                return in_array($name, $this->registered, true);
+            }
+        }
+    }
+}
+
+// ─── MediaWiki\Context ────────────────────────────────────────────
+
+namespace MediaWiki\Context {
+    if (!class_exists(RequestContext::class)) {
+        /** The chain Setup walks: the main context, and through it a request. */
+        class RequestContext
+        {
+            public static function getMain(): self
+            {
+                return new self();
+            }
+
+            public function getRequest(): \MediaWiki\Request\WebRequest
+            {
+                return new \MediaWiki\Request\WebRequest();
+            }
+        }
+    }
+}
+
+// ─── MediaWiki\Request ────────────────────────────────────────────
+
+namespace MediaWiki\Request {
+    if (!class_exists(WebRequest::class)) {
+        class WebRequest
+        {
+            /** @var array<string, string> */
+            private static array $values = [];
+
+            /** @param array<string, string> $values */
+            public static function setValuesForTesting(array $values): void
+            {
+                self::$values = $values;
+            }
+
+            public function getRawVal(string $name): ?string
+            {
+                return self::$values[$name] ?? null;
+            }
+        }
+    }
+}
+
 // ─── MediaWiki\Output ─────────────────────────────────────────────
 
 namespace MediaWiki\Output {
@@ -168,8 +231,16 @@ namespace MediaWiki\Output {
             /** @var list<string> */
             public array $modules = [];
 
-            public function __construct(private readonly bool $mayEdit = true)
+            /** @param list<string> $registeredModules */
+            public function __construct(
+                private readonly bool $mayEdit = true,
+                private readonly array $registeredModules = []
+            ) {
+            }
+
+            public function getResourceLoader(): \MediaWiki\ResourceLoader\ResourceLoader
             {
+                return new \MediaWiki\ResourceLoader\ResourceLoader($this->registeredModules);
             }
 
             /** @param string|list<string> $modules */

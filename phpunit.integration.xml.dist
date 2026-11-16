@@ -4,11 +4,11 @@
   (MediaWikiIntegrationTestCase). Invoked from inside the docker MW
   container by `composer test:integration`. Do not invoke directly with
   our local PHPUnit: these tests need MW core's autoloader and
-  bootstrap.integration.php to be loaded first.
+  bootstrap.php to be loaded first.
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.5/phpunit.xsd"
-         bootstrap="/var/www/html/tests/phpunit/bootstrap.integration.php"
+         bootstrap="/var/www/html/tests/phpunit/bootstrap.php"
          colors="true"
          convertDeprecationsToExceptions="true"
          convertErrorsToExceptions="true"

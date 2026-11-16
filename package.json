@@ -10,6 +10,7 @@
         "@playwright/test": "^1.64.1",
         "@wordpress/eslint-plugin": "^27.1.0",
         "@wordpress/scripts": "^37.0.0",
+        "eslint-plugin-jest": "^29.17.1",
         "jest": "^30.5.2",
         "jest-environment-jsdom": "^30.5.2"
     },

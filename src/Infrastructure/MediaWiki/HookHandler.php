@@ -13,8 +13,11 @@ use MediaWiki\Registration\ExtensionRegistry;
  */
 class HookHandler implements BeforePageDisplayHook
 {
-    /** Skin that carries MobileFrontend's search overlay. */
-    private const OVERLAY_SKIN = 'minerva';
+    /** Skin whose search suggestions this deals with. */
+    private const MOBILE_SKIN = 'minerva';
+
+    /** Module Minerva registers for its Codex typeahead search. */
+    private const TYPEAHEAD_MODULE = 'skins.minerva.search';
 
     public function __construct(private readonly Config $config)
     {
@@ -22,9 +25,9 @@ class HookHandler implements BeforePageDisplayHook
 
     /**
      * Load the modules that fetch page images separately. Two places ask for
-     * them in the same request as the results: MobileFrontend's search
-     * overlay and VisualEditor's title widgets. Both need PageImages as the
-     * source of the thumbnails, and each needs its own extension on top.
+     * them in the same request as the results: Minerva's typeahead search and
+     * VisualEditor's title widgets. Both need PageImages as the source of the
+     * thumbnails.
      *
      * ExtensionRegistry is not a service in MediaWikiServices, so it is read
      * from its singleton rather than injected.
@@ -44,7 +47,13 @@ class HookHandler implements BeforePageDisplayHook
             return;
         }
 
-        if ($skin->getSkinName() === self::OVERLAY_SKIN && $registry->isLoaded('MobileFrontend')) {
+        // Asking the module registry rather than the MediaWiki version: the
+        // skin brings the Codex typeahead from 1.46 on, and older Minerva
+        // has nothing the script could work on.
+        if (
+            $skin->getSkinName() === self::MOBILE_SKIN
+            && $out->getResourceLoader()->isModuleRegistered(self::TYPEAHEAD_MODULE)
+        ) {
             $out->addModules(['ext.improveSearch.deferredThumbnails']);
         }
 

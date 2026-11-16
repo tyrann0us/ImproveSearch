@@ -199,7 +199,7 @@ The unit suite runs without MediaWiki: `tests/phpunit/bootstrap.php` loads hand-
 A throwaway wiki for the integration and end-to-end suites comes from Docker:
 
 ```bash
-npm run docker:up            # MediaWiki 1.44 + MariaDB at localhost:8080
+npm run docker:up            # MediaWiki 1.46 + MariaDB at localhost:8080
 composer tests:integration   # PHPUnit inside the container
 npm run test:e2e             # Playwright against the running wiki
 npm run docker:down
@@ -223,7 +223,7 @@ php maintenance/run.php sql --query 'SELECT SUM(si_text LIKE "%.jpg%") FROM sear
 
 ## Requirements
 
-MediaWiki 1.44 or later, MySQL or MariaDB. Developed and tested against 1.44 with Semantic MediaWiki.
+MediaWiki 1.46 or later, MySQL or MariaDB. Developed and tested against 1.46 with Semantic MediaWiki.
 
 ## Copyright and license
 

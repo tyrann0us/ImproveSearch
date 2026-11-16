@@ -3,7 +3,7 @@ set -e
 
 # Install MW dev dependencies (PHPUnit, wikimedia/testing-access-wrapper)
 # so the Integration suite can run inside the container. The official
-# mediawiki:1.44 image ships production deps only.
+# mediawiki image ships production deps only.
 #
 # Opt in with INSTALL_DEV_DEPS=1. The dev-deps install rewrites
 # /var/www/html/vendor and invalidates Apache's warm opcache, which
@@ -61,6 +61,15 @@ fi
 cp /var/www/html/extensions/ImproveSearch/.docker/LocalSettings.php /var/www/html/LocalSettings.php
 chown www-data:www-data /var/www/html/LocalSettings.php
 
+# MW 1.46 runs tests with vendor/bin/phpunit. Its bootstrap requires a
+# phpunit.xml generated from phpunit.xml.template, and the image ships
+# neither, so fetch the template from the image's branch and generate one.
+if [ -d /var/www/html/vendor/phpunit ] && [ ! -f /var/www/html/phpunit.xml ]; then
+    curl -sSfo phpunit.xml.template \
+        https://raw.githubusercontent.com/wikimedia/mediawiki/REL1_46/phpunit.xml.template
+    composer phpunit:config 2>&1 | tail -1
+fi
+
 # Create cache directory for the localisation cache.
 mkdir -p /tmp/mw-cache
 chown www-data:www-data /tmp/mw-cache
@@ -105,6 +114,22 @@ WIKITEXT
 php maintenance/run.php edit "Old Bridge" <<'WIKITEXT'
 #REDIRECT [[Stone Bridge]]
 WIKITEXT
+
+# One page with a real image on it, for the thumbnail tests. PageImages
+# only picks images that are big enough to be worth showing, so this one is
+# 400 by 300, not a pixel.
+mkdir -p /tmp/e2e-images
+convert -size 400x300 xc:'#788c5a' /tmp/e2e-images/Weavers-Lane-Mill.png
+php maintenance/run.php importImages --user=Admin --comment="E2E fixture" /tmp/e2e-images
+
+php maintenance/run.php edit "Weavers Lane" <<'WIKITEXT'
+[[File:Weavers-Lane-Mill.png|thumb|The mill at the end of the lane.]]
+'''Weavers Lane''' runs behind the mill.
+WIKITEXT
+
+# The upload ran as root, and the web server scales the thumbnails as
+# www-data. Without this it answers every search without images.
+chown -R www-data:www-data /var/www/html/images
 
 # Index the corpus through the extension's content handler.
 php maintenance/run.php rebuildtextindex

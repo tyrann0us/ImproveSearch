@@ -37,8 +37,19 @@ $wgUpgradeKey = 'e2e-test-upgrade-key';
 # Disable email.
 $wgEnableEmail = false;
 
-# Load Vector skin (default in MW 1.44).
+# Load Vector as the default skin, and Minerva for the typeahead tests,
+# which reach it with ?useskin=minerva.
 wfLoadSkin( 'Vector' );
+wfLoadSkin( 'MinervaNeue' );
+
+# PageImages is what puts a thumbnail next to a search hit. Without it the
+# deferred thumbnails have nothing to defer.
+wfLoadExtension( 'PageImages' );
+
+# One uploaded file is enough to give a page an image, see setup-wiki.sh.
+# The image ships ImageMagick but no GD, so scaling needs this.
+$wgEnableUploads = true;
+$wgUseImageMagick = true;
 
 # Load ImproveSearch. Every switch is on by default; the e2e suite asserts
 # the default behaviour.

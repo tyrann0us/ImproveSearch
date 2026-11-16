@@ -41,11 +41,11 @@ npm run lint:md          # Markdown lint
 ### Docker (local wiki + MariaDB)
 
 ```bash
-npm run docker:up   # start MediaWiki 1.44 at localhost:8080 against MariaDB
+npm run docker:up   # start MediaWiki at localhost:8080 against MariaDB
 npm run docker:down # tear down with volumes
 ```
 
-MariaDB, not SQLite: the search engine extends `SearchMySQL` and the substring matching relies on `CONVERT(… USING utf8mb4) COLLATE utf8mb4_unicode_ci`. There is nothing to exercise on any other backend. `.docker/setup-wiki.sh` installs the wiki, writes the test `LocalSettings.php`, creates one page per claim in the README and runs `rebuildtextindex`.
+MariaDB, not SQLite: the search engine extends `SearchMySQL` and the substring matching relies on `CONVERT(… USING utf8mb4) COLLATE utf8mb4_unicode_ci`. There is nothing to exercise on any other backend. `.docker/setup-wiki.sh` installs the wiki, writes the test `LocalSettings.php`, creates one page per claim in the README, uploads one image so PageImages has something to offer, and runs `rebuildtextindex`. MediaWiki 1.46, because Minerva's typeahead search starts there.
 
 Integration tests run inside the container; `composer tests:integration` handles this automatically.
 

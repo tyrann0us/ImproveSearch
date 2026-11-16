@@ -1,6 +1,6 @@
 services:
   wiki:
-    image: mediawiki:1.44
+    image: mediawiki:1.46
     ports:
       - '8080:80'
     volumes:

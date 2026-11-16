@@ -5,6 +5,9 @@ on:
     paths:
       - '**.js'
       - '**.md'
+      - 'eslint.config.cjs'
+      - 'package.json'
+      - 'package-lock.json'
 
 permissions:
   contents: read

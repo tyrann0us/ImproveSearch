@@ -205,9 +205,18 @@ namespace MediaWiki\Request {
     if (!class_exists(WebRequest::class)) {
         class WebRequest
         {
+            /** @var array<string, string> */
+            private static array $values = [];
+
+            /** @param array<string, string> $values */
+            public static function setValuesForTesting(array $values): void
+            {
+                self::$values = $values;
+            }
+
             public function getRawVal(string $name): ?string
             {
-                return null;
+                return self::$values[$name] ?? null;
             }
         }
     }

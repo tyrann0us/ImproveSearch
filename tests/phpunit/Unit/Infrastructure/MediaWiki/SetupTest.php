@@ -10,6 +10,7 @@ use MediaWiki\Extension\ImproveSearch\Infrastructure\MediaWiki\CleanWikitextCont
 use MediaWiki\Extension\ImproveSearch\Infrastructure\MediaWiki\Setup;
 use MediaWiki\Extension\ImproveSearch\Infrastructure\MediaWiki\SubstringTitleSearchEngine;
 use MediaWiki\MainConfigNames;
+use MediaWiki\Request\WebRequest;
 use MediaWiki\Settings\SettingsBuilder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -31,6 +32,7 @@ class SetupTest extends TestCase
             'ImproveSearchCleanIndexText' => true,
             'ImproveSearchSubstringTitles' => true,
             'ImproveSearchSkipUnusedThumbnails' => true,
+            'ImproveSearchDeferSearchThumbnails' => true,
             MainConfigNames::ContentHandlers => [
                 CONTENT_MODEL_WIKITEXT => WikitextContentHandler::class,
             ],
@@ -39,6 +41,64 @@ class SetupTest extends TestCase
             MainConfigNames::ThumbnailNamespaces => [NS_FILE],
             MainConfigNames::DefaultUserOptions => ['search-thumbnail-extra-namespaces' => true],
         ]));
+    }
+
+    /**
+     * @return callable(): ?bool
+     */
+    private static function thumbnailHandler(SettingsBuilder $builder): callable
+    {
+        $hooks = $builder->overrides[MainConfigNames::Hooks];
+        $handlers = $hooks['SearchResultProvideThumbnail'];
+
+        return end($handlers);
+    }
+
+    public function testHandlerStopsTheChainWhenTheRequestAsksForNoThumbnails(): void
+    {
+        $builder = self::builder();
+        Setup::onRegistration([], $builder);
+        $handler = self::thumbnailHandler($builder);
+
+        WebRequest::setValuesForTesting([Setup::THUMBNAIL_OPT_OUT => '0']);
+
+        // False is what ends a hook chain, here before PageImages runs.
+        self::assertFalse($handler());
+    }
+
+    public function testHandlerLetsEveryOtherRequestThrough(): void
+    {
+        $builder = self::builder();
+        Setup::onRegistration([], $builder);
+        $handler = self::thumbnailHandler($builder);
+
+        WebRequest::setValuesForTesting([]);
+
+        self::assertNull($handler());
+    }
+
+    /** Other handlers of that hook keep their place in the chain. */
+    public function testKeepsTheHandlersTheWikiAlreadyHas(): void
+    {
+        $theirs = static fn (): ?bool => null;
+        $builder = self::builder([
+            MainConfigNames::Hooks => ['SearchResultProvideThumbnail' => [$theirs]],
+        ]);
+
+        Setup::onRegistration([], $builder);
+
+        $hooks = $builder->overrides[MainConfigNames::Hooks];
+        self::assertSame($theirs, $hooks['SearchResultProvideThumbnail'][0]);
+        self::assertCount(2, $hooks['SearchResultProvideThumbnail']);
+    }
+
+    public function testLeavesTheHookAloneWhenTheSwitchIsOff(): void
+    {
+        $builder = self::builder(['ImproveSearchDeferSearchThumbnails' => false]);
+
+        Setup::onRegistration([], $builder);
+
+        self::assertArrayNotHasKey(MainConfigNames::Hooks, $builder->overrides);
     }
 
     public function testTakesOverEverythingOnAStockWiki(): void

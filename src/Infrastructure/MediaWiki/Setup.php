@@ -123,7 +123,7 @@ final class Setup
      */
     private static function answerTypeaheadWithoutThumbnails(SettingsBuilder $settings): void
     {
-        $hooks = $settings->getConfig()->get(MainConfigNames::Hooks);
+        $hooks = (array) $settings->getConfig()->get(MainConfigNames::Hooks);
 
         // The hook's three arguments are of no interest here: either the
         // request carries the parameter, and then nobody should fill the

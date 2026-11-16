@@ -17,32 +17,38 @@ use Skin;
 class HookHandlerTest extends TestCase
 {
     private const MODULE = 'ext.improveSearch.deferredThumbnails';
+    private const MINERVA_SEARCH = 'skins.minerva.search';
     private const VE_MODULE = 'ext.improveSearch.deferredVeThumbnails';
 
     /**
-     * @return array<string, array{bool, string, list<string>}>
+     * @return array<string, array{bool, string, list<string>, list<string>}>
      */
     public static function silentProvider(): array
     {
         return [
-            'switch off' => [false, 'minerva', ['PageImages', 'MobileFrontend']],
-            'other skin' => [true, 'vector', ['PageImages', 'MobileFrontend']],
-            'no PageImages' => [true, 'minerva', ['MobileFrontend']],
-            'no MobileFrontend' => [true, 'minerva', ['PageImages']],
+            'switch off' => [false, 'minerva', ['PageImages'], [self::MINERVA_SEARCH]],
+            'other skin' => [true, 'vector', ['PageImages'], [self::MINERVA_SEARCH]],
+            'no PageImages' => [true, 'minerva', [], [self::MINERVA_SEARCH]],
+            'skin without the typeahead' => [true, 'minerva', ['PageImages'], []],
         ];
     }
 
     /**
      * The module is only worth loading where all three parts of the problem
-     * are present: the overlay skin, PageImages, and MobileFrontend.
+     * are present: the skin, its typeahead search, and PageImages.
      *
      * @param list<string> $loadedExtensions
+     * @param list<string> $registeredModules
      */
     #[DataProvider('silentProvider')]
-    public function testStaysOutOfTheWay(bool $enabled, string $skinName, array $loadedExtensions): void
-    {
+    public function testStaysOutOfTheWay(
+        bool $enabled,
+        string $skinName,
+        array $loadedExtensions,
+        array $registeredModules
+    ): void {
         ExtensionRegistry::setInstanceForTesting($loadedExtensions);
-        $out = new OutputPage();
+        $out = new OutputPage(true, $registeredModules);
 
         $this->handler($enabled)->onBeforePageDisplay($out, new Skin($skinName));
 
@@ -51,8 +57,8 @@ class HookHandlerTest extends TestCase
 
     public function testLoadsTheModuleWhenAllThreePartsArePresent(): void
     {
-        ExtensionRegistry::setInstanceForTesting(['PageImages', 'MobileFrontend']);
-        $out = new OutputPage();
+        ExtensionRegistry::setInstanceForTesting(['PageImages']);
+        $out = new OutputPage(true, [self::MINERVA_SEARCH]);
 
         $this->handler(true)->onBeforePageDisplay($out, new Skin('minerva'));
 

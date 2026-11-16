@@ -148,12 +148,12 @@ Set `$wgImproveSearchSkipUnusedThumbnails = false;` to keep core's default in ev
 
 Two places ask for the page images in the same request as the results, and MediaWiki fetches the file data from the foreign repository before it answers at all. Nothing appears until the slowest image is known.
 
-* MobileFrontend's search overlay. On a cold cache a fifteen-hit search took between two and eight seconds instead of a third of one.
+* Minerva's typeahead search, where the `search/title` endpoint looks the images up for every hit. On a cold cache a ten-hit lookup took between 1.3 and 4.4 seconds instead of half of one.
 * VisualEditor's title widgets, the link dialog above all, where every keystroke waits. One lookup took between 1.4 and 3.0 seconds instead of half of one.
 
-In both cases the extension drops the image parameters from that request. The list appears with the placeholder icons they render anyway, and a second request fills the images in.
+In both cases the images stay out of that request, and a second one fills them into the placeholder icons they render anyway.
 
-The overlay script loads on the Minerva skin, and only when PageImages and MobileFrontend are installed. The VisualEditor one loads for readers who may edit, and patches the widget when VisualEditor announces `ve.activationComplete`, late enough that `mediawiki.widgets` is never pulled in for its sake.
+They go about it differently, because only one of them is answered in the browser. The typeahead script adds `improvesearchthumbs=0` to the search request, and the extension reads that parameter on the server and ends the `SearchResultProvideThumbnail` hook before PageImages looks anything up. It loads on the Minerva skin from MediaWiki 1.46, where the skin brings that search. The VisualEditor script loads for readers who may edit, and patches the widget when VisualEditor announces `ve.activationComplete`, late enough that `mediawiki.widgets` is never pulled in for its sake.
 
 Set `$wgImproveSearchDeferSearchThumbnails = false;` to let both fetch their images with the results again.
 
@@ -180,7 +180,7 @@ The extension never overrules a wiki that has an opinion of its own. It stays ou
 * `$wgContentHandlers[CONTENT_MODEL_WIKITEXT]` is not the stock handler;
 * `$wgThumbnailNamespaces` lists namespaces beyond `NS_FILE`.
 
-Nothing here requires another extension. PageImages and MobileFrontend are detected by name through `ExtensionRegistry`, never called, so the extension behaves the same whether they are installed or not.
+Nothing here requires another extension. PageImages and VisualEditor are detected by name through `ExtensionRegistry`, never called, so the extension behaves the same whether they are installed or not.
 
 ## Development
 

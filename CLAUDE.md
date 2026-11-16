@@ -53,7 +53,7 @@ Integration tests run inside the container; `composer tests:integration` handles
 
 ## Architecture
 
-The extension changes MediaWiki's built-in MySQL search without adding an index, a daemon or a table: what goes into `searchindex`, how title matches are found, and when the mobile overlay fetches its thumbnails.
+The extension changes MediaWiki's built-in MySQL search without adding an index, a daemon or a table: what goes into `searchindex`, how title matches are found, and when the search suggestions fetch their thumbnails.
 
 ### Layout
 
@@ -95,11 +95,13 @@ titleQuery(): page LIKE '%…%' under utf8mb4_unicode_ci, redirects excluded
        ↓  suggestion list only, once title matches run out:
 contentMatches() → doSearchTextInDB()   (same query as the results page)
 
-Mobile overlay thumbnails:
+Typeahead thumbnails (Minerva from 1.46, which registers skins.minerva.search):
 HookHandler::onBeforePageDisplay() → ext.improveSearch.deferredThumbnails
        ↓
-resources/deferred-thumbnails.js strips piprop/pithumbsize/pilimit from
-MobileFrontend's search request, then fills the images in from a second one
+resources/deferred-thumbnails.js adds improvesearchthumbs=0 to the
+REST request; Setup reads it and ends the SearchResultProvideThumbnail hook,
+so the server answers without images, and the module paints them into the
+Codex entries from a second request to api.php
 ```
 
 ### Dependency injection
@@ -110,7 +112,7 @@ MobileFrontend's search request, then fills the images in from a second one
 
 ## Key invariants
 
-**No hard dependency on another extension.** PageImages and MobileFrontend are detected by name through `ExtensionRegistry::isLoaded()`, and the JS reads MobileFrontend's `mw.config` keys behind `|| {}` fallbacks. Nothing calls into either extension's classes, so nothing fatals when they are absent. Keep it that way: a `use` of a foreign class or a bare `mw.mobileFrontend.…` would turn an optional feature into a crash.
+**No hard dependency on another extension.** PageImages and VisualEditor are detected by name through `ExtensionRegistry::isLoaded()`, and Minerva's search by its module name through the ResourceLoader. Nothing calls into another extension's classes, so nothing fatals when they are absent. Keep it that way: a `use` of a foreign class would turn an optional feature into a crash.
 
 **Every switch stands down when the wiki has an opinion.** `Setup` runs from `extension.json`'s `callback`, after `LocalSettings.php`. It claims `$wgSearchType` only when unset and the DB is MySQL, replaces the wikitext content handler only when it is the stock one, and flips `search-thumbnail-extra-namespaces` only when `$wgThumbnailNamespaces` holds nothing beyond `NS_FILE`. Anything else is the operator's decision.
 
@@ -128,4 +130,6 @@ MobileFrontend's search request, then fills the images in from a second one
 
 **Hook parameter types.** Hook interface method parameters must be left untyped (PHP LSP constraint). Suppress `Syde.Functions.ArgumentTypeDeclaration.NoArgumentType` via `// phpcs:ignore` on those methods. Return types can be added (covariant).
 
-**MobileFrontend sets its config twice.** `wgMFQueryPropModules` and `wgMFSearchAPIParams` are written again when `mobile.startup` executes, which is after this module runs. `deferred-thumbnails.js` therefore strips them once immediately and once more behind `mw.loader.using( 'mobile.startup' )`.
+**Only a legacy hook handler can stop the thumbnail chain.** The handlers from the `Hooks` setting run before those from `extension.json`, and `SearchResultProvideThumbnail` is only stopped by a handler that returns false. A handler declared in `extension.json` has to be void, like the hook interface, so `Setup` appends a closure to the `Hooks` setting instead. `SettingsBuilder::registerHookHandler()` is no way around it: by the time the extension callback runs, the loading stage is over and it throws.
+
+**Vue owns the typeahead menu.** It rebuilds the entries on every keystroke, so an image painted into them is gone with the next render. `deferred-thumbnails.js` therefore keeps every title it has seen and repaints from that cache whenever the menu changes.

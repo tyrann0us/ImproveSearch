@@ -1,138 +1,77 @@
 /*!
- * Fetch the page images of the mobile search overlay separately.
+ * Fetch the page images of the typeahead search separately.
  *
- * MobileFrontend asks for the thumbnails in the same request as the results
- * (SearchGateway.js via extendSearchParams.js). For every hit whose file is
- * not cached yet, MediaWiki then fetches the file data from the foreign
- * repository before it can answer at all, so the whole list waits for the
- * slowest image. Measured against a cold cache, a fifteen-hit search took
- * between two and eight seconds instead of a third of one.
+ * The REST endpoint behind the Codex typeahead looks up a thumbnail for every
+ * hit before it answers, and MediaWiki fetches the file data from the foreign
+ * repository first, so the whole list waits for the slowest image. On a cold
+ * cache a ten-hit lookup took between 1.3 and 4.4 seconds instead of half of
+ * one.
  *
- * So: drop the image parameters from that request, let the list appear with
- * the placeholder icons MobileFrontend renders anyway, and fill the images in
- * afterwards from a second request.
+ * So: ask the endpoint to leave the images out, let the menu appear with the
+ * placeholder icons it renders anyway, and fill them in from a second request.
  */
 ( function () {
 	'use strict';
 
-	// MobileFrontend asks for this width in SearchGateway.js.
-	const thumbSize =
-		( mw.config.get( 'wgMFThumbnailSizes' ) || {} ).tiny || 120;
-	// Page id to thumbnail, or null once we know the page has no image.
-	// Every keystroke renders a new list, mostly of the same pages.
+	// The size SearchResultThumbnailProvider uses for the endpoint.
+	const thumbSize = 60;
+	// Title to image URL, null while a request is out and once we know the
+	// page has none. Every keystroke renders a new menu, mostly of the same
+	// pages.
 	const known = new Map();
 
 	let api = null;
-	let scheduled = false;
+
+	// The PHP side of this extension reads the parameter and ends the
+	// thumbnail hook before PageImages fills it in.
+	mw.hook( 'typeaheadSearch.appendUrlParams' ).add( ( append ) => {
+		append( 'improvesearchthumbs', '0' );
+	} );
 
 	/**
-	 * Take the page images out of the search request itself.
+	 * Put one image into a menu entry, in the shape CdxThumbnail renders it.
 	 *
-	 * Both variables are read per search, so changing them here is enough.
-	 * MobileFrontend adds them unconditionally as soon as PageImages is
-	 * installed and offers no setting to leave them out.
+	 * @param {Element}     item One rendered menu entry
+	 * @param {string|null} url  Thumbnail URL
 	 */
-	function stripImageParams() {
-		const props = mw.config.get( 'wgMFQueryPropModules' ) || [];
-		if ( props.indexOf( 'pageimages' ) !== -1 ) {
-			mw.config.set(
-				'wgMFQueryPropModules',
-				props.filter( ( prop ) => prop !== 'pageimages' )
-			);
-		}
-
-		const params = Object.assign(
-			{},
-			mw.config.get( 'wgMFSearchAPIParams' )
-		);
-		delete params.piprop;
-		delete params.pithumbsize;
-		delete params.pilimit;
-		mw.config.set( 'wgMFSearchAPIParams', params );
-	}
-
-	/**
-	 * Put one image into a list entry, in the shape PageList.js would have
-	 * rendered it: background image on .list-thumb, orientation class, and no
-	 * placeholder icon left behind.
-	 *
-	 * @param {Element}     thumbEl The .list-thumb element
-	 * @param {Object|null} thumb   Thumbnail as returned by prop=pageimages
-	 */
-	function paint( thumbEl, thumb ) {
-		if ( ! thumb || ! thumb.source ) {
+	function paint( item, url ) {
+		const thumbnail = item.querySelector( '.cdx-thumbnail' );
+		if (
+			! url ||
+			! thumbnail ||
+			thumbnail.querySelector( '.cdx-thumbnail__image' )
+		) {
 			return;
 		}
 
-		const isLandscape = thumb.width > thumb.height;
-		thumbEl.classList.toggle( 'list-thumb-y', isLandscape );
-		thumbEl.classList.toggle( 'list-thumb-x', ! isLandscape );
-		// Quoted: a thumbnail URL may carry spaces or brackets.
-		thumbEl.style.backgroundImage = 'url("' + thumb.source + '")';
+		const image = document.createElement( 'span' );
+		image.className = 'cdx-thumbnail__image mw-no-invert';
+		// Escaped the way CdxThumbnail escapes it: a URL may carry quotes.
+		image.style.backgroundImage =
+			'url("' + url.replace( /(["\\\n])/g, '\\$1' ) + '")';
 
-		const placeholder = thumbEl.querySelector( '.mf-icon-image' );
+		const placeholder = thumbnail.querySelector(
+			'.cdx-thumbnail__placeholder'
+		);
 		if ( placeholder ) {
 			placeholder.remove();
 		}
+		thumbnail.appendChild( image );
 	}
 
 	/**
-	 * Every list entry still waiting for an image.
-	 *
-	 * @return {Map} page id to the .list-thumb elements carrying that id
+	 * @param {string[]} titles Pages the cache knows nothing about yet
 	 */
-	function openEntries() {
-		const entries = new Map();
-
-		document
-			.querySelectorAll( '.mw-mf-page-list li.page-summary[data-id]' )
-			.forEach( ( item ) => {
-				const id = Number( item.getAttribute( 'data-id' ) );
-				const thumbEl = item.querySelector( '.list-thumb' );
-				// data-style means the entry brought its own image and
-				// PageList.js is about to apply it.
-				if (
-					! id ||
-					! thumbEl ||
-					thumbEl.style.backgroundImage ||
-					thumbEl.dataset.style
-				) {
-					return;
-				}
-
-				if ( known.has( id ) ) {
-					paint( thumbEl, known.get( id ) );
-					return;
-				}
-
-				if ( ! entries.has( id ) ) {
-					entries.set( id, [] );
-				}
-				entries.get( id ).push( thumbEl );
-			} );
-
-		return entries;
-	}
-
-	/**
-	 * Fetch the images for the entries on screen and paint them.
-	 */
-	function fill() {
-		scheduled = false;
-
-		const entries = openEntries();
-		if ( ! entries.size ) {
-			return;
-		}
-
-		// The overlay shows fifteen hits, so one request always covers them.
-		const ids = Array.from( entries.keys() ).slice( 0, 50 );
+	function fetchImages( titles ) {
+		// A null entry paints nothing and keeps the next menu from asking
+		// again while this request is still out.
+		titles.forEach( ( title ) => known.set( title, null ) );
 		api = api || new mw.Api();
 
 		api.get( {
 			action: 'query',
 			formatversion: 2,
-			pageids: ids.join( '|' ),
+			titles,
 			prop: 'pageimages',
 			piprop: 'thumbnail',
 			pithumbsize: thumbSize,
@@ -140,38 +79,56 @@
 			.then( ( data ) => {
 				const pages = ( data.query && data.query.pages ) || [];
 
-				pages.forEach( ( page ) => {
-					const thumb = page.thumbnail || null;
-					// Remember the misses too, so typing on does not ask again.
-					known.set( page.pageid, thumb );
-					( entries.get( page.pageid ) || [] ).forEach( ( thumbEl ) =>
-						paint( thumbEl, thumb )
-					);
-				} );
+				// Remember the misses too, so typing on does not ask again.
+				pages.forEach( ( page ) =>
+					known.set(
+						page.title,
+						( page.thumbnail && page.thumbnail.source ) || null
+					)
+				);
+				scan();
 			} )
 			.catch( () => {
-				// An image that does not arrive is not worth a broken search. The
-				// placeholder icon stays, and the next list tries again.
+				// An image that does not arrive is not worth a broken menu.
+				// The placeholder icon stays, and the next menu asks again.
+				titles.forEach( ( title ) => known.delete( title ) );
 			} );
 	}
 
-	function schedule() {
-		if ( scheduled ) {
-			return;
+	/** Paint what the cache holds, and ask about the rest. */
+	function scan() {
+		const wanted = [];
+
+		document
+			.querySelectorAll( '.cdx-typeahead-search .cdx-menu-item' )
+			.forEach( ( item ) => {
+				// The footer entry carries no label and no page behind it.
+				const label = item.querySelector(
+					'.cdx-menu-item__text__label'
+				);
+				if ( ! label ) {
+					return;
+				}
+
+				const title = label.textContent.trim();
+				if ( known.has( title ) ) {
+					paint( item, known.get( title ) );
+				} else {
+					wanted.push( title );
+				}
+			} );
+
+		if ( wanted.length ) {
+			fetchImages( wanted );
 		}
-		scheduled = true;
-		setTimeout( fill, 0 );
 	}
 
-	// MobileFrontend publishes these variables from its own ResourceLoader
-	// config module and writes them again when mobile.startup runs, which is
-	// after this one. Stripping them only now would be undone, so do it again
-	// once MobileFrontend has had its say.
-	stripImageParams();
-	mw.loader.using( 'mobile.startup' ).then( stripImageParams, () => {} );
-
-	// The overlay renders a fresh list on every keystroke.
-	new MutationObserver( schedule ).observe( document.body, {
+	// Vue owns the menu and rebuilds it on every keystroke, so an image
+	// painted into it is gone after the next render, and painting again from
+	// the cache is the cheapest way to keep it. There is nothing narrower to
+	// watch than the document: on a narrow screen Minerva opens the search in
+	// a dialog of its own, outside the form in the header.
+	new MutationObserver( scan ).observe( document.body, {
 		childList: true,
 		subtree: true,
 	} );

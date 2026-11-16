@@ -159,6 +159,25 @@ namespace MediaWiki\Permissions {
     }
 }
 
+// ─── MediaWiki\ResourceLoader ─────────────────────────────────────
+
+namespace MediaWiki\ResourceLoader {
+    if (!class_exists(ResourceLoader::class)) {
+        class ResourceLoader
+        {
+            /** @param list<string> $registered */
+            public function __construct(private readonly array $registered = [])
+            {
+            }
+
+            public function isModuleRegistered(string $name): bool
+            {
+                return in_array($name, $this->registered, true);
+            }
+        }
+    }
+}
+
 // ─── MediaWiki\Output ─────────────────────────────────────────────
 
 namespace MediaWiki\Output {
@@ -168,8 +187,16 @@ namespace MediaWiki\Output {
             /** @var list<string> */
             public array $modules = [];
 
-            public function __construct(private readonly bool $mayEdit = true)
+            /** @param list<string> $registeredModules */
+            public function __construct(
+                private readonly bool $mayEdit = true,
+                private readonly array $registeredModules = []
+            ) {
+            }
+
+            public function getResourceLoader(): \MediaWiki\ResourceLoader\ResourceLoader
             {
+                return new \MediaWiki\ResourceLoader\ResourceLoader($this->registeredModules);
             }
 
             /** @param string|list<string> $modules */

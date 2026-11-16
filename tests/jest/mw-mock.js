@@ -1,7 +1,7 @@
 /**
  * Minimal MediaWiki JS environment mock for testing the resource modules.
  *
- * Sets up window.mw (config, Api, loader) so the scripts can run in a JSDOM
+ * Sets up window.mw (config, Api, hook) so the scripts can run in a JSDOM
  * environment without the full ResourceLoader runtime. Loading the module
  * under test is the test file's job: `require()` has to be called from there,
  * or `jest.resetModules()` will not give it a fresh instance.
@@ -10,35 +10,16 @@
 'use strict';
 
 /**
- * What MobileFrontend puts into mw.config, both at page load and again when
- * its own `mobile.startup` module executes.
- *
- * @return {Object} a fresh copy, so tests can mutate it freely
- */
-function mobileFrontendConfig() {
-	return {
-		wgMFThumbnailSizes: { tiny: 120, small: 220 },
-		wgMFQueryPropModules: [ 'pageprops', 'pageimages' ],
-		wgMFSearchAPIParams: {
-			ppprop: 'displaytitle',
-			piprop: 'thumbnail',
-			pithumbsize: 220,
-			pilimit: 50,
-		},
-	};
-}
-
-/**
  * Build a fresh mw mock and attach it to the given window.
  * Returns helpers that tests use to inspect and trigger behaviour.
  *
  * @param {Window} win
- * @param {Object} [initialConfig] mw.config contents, defaults to MobileFrontend's
+ * @param {Object} [initialConfig] mw.config contents
  */
 function createMwEnv( win, initialConfig ) {
 	// ── mw.config (stands in for mw.Map, which also takes a whole object) ──
 
-	const store = Object.assign( {}, initialConfig || mobileFrontendConfig() );
+	const store = Object.assign( {}, initialConfig || {} );
 	const config = {
 		get( key ) {
 			return store[ key ] !== undefined ? store[ key ] : null;
@@ -64,18 +45,6 @@ function createMwEnv( win, initialConfig ) {
 		};
 	}
 
-	// ── mw.loader ───────────────────────────────────────────────
-
-	let resolveUsing;
-	let rejectUsing;
-	const loader = {
-		using: () =>
-			new Promise( ( resolve, reject ) => {
-				resolveUsing = resolve;
-				rejectUsing = reject;
-			} ),
-	};
-
 	// ── mw.hook ─────────────────────────────────────────────────
 
 	const hooks = {};
@@ -86,7 +55,7 @@ function createMwEnv( win, initialConfig ) {
 		},
 	} );
 
-	win.mw = { config, Api: MwApi, loader, hook };
+	win.mw = { config, Api: MwApi, hook };
 
 	// ── Return helpers for tests ────────────────────────────────
 
@@ -98,20 +67,13 @@ function createMwEnv( win, initialConfig ) {
 		/**
 		 * Fire a hook the module under test subscribed to.
 		 *
-		 * @param {string} name
+		 * @param {string}               name
+		 * @param {...(string|Function)} args what the firing side passes on
 		 */
-		fireHook: ( name ) =>
-			( hooks[ name ] || [] ).forEach( ( handler ) => handler() ),
-
-		/** Let the pending mw.loader.using( 'mobile.startup' ) settle. */
-		letMobileStartupFinish: () => resolveUsing && resolveUsing(),
-
-		/** MobileFrontend is not installed, so the module never arrives. */
-		failMobileStartup: () =>
-			rejectUsing && rejectUsing( new Error( 'no module' ) ),
-
-		/** Replay what MobileFrontend does when mobile.startup executes. */
-		replayMobileFrontendConfig: () => config.set( mobileFrontendConfig() ),
+		fireHook: ( name, ...args ) =>
+			( hooks[ name ] || [] ).forEach( ( handler ) =>
+				handler( ...args )
+			),
 
 		/**
 		 * @param {Function} handler receives the request params, returns a promise

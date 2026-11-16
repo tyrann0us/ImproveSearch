@@ -96,7 +96,7 @@ Wikis that use redirects as genuine alternative names, and would rather see them
 * Once the non-word characters are stripped, the words from file names and template parameters stay behind as search terms. `sortkey` finds every page using a template with that parameter, and the file name of an embedded photo makes its page a hit for words that appear nowhere in the article.
 * Snippets show the markup. `[[File:Photo.jpg|thumb|A caption]]` turns up in the middle of the two lines under a result.
 
-Both are fixed in one place. The extension replaces the content handler for `CONTENT_MODEL_WIKITEXT` with one whose `getTextForSearchIndex()` returns readable running text: no embeds, no template calls, no categories, no references, no table or list markers. Links keep their visible part, semantic annotations `[[Property::Value]]` keep their value.
+Both are fixed in one place. The extension replaces the content handler for `CONTENT_MODEL_WIKITEXT` with one whose `getTextForSearchIndex()` returns readable running text: no embeds, no template calls, no categories, no references, no table or list markers. It asks the wiki which prefixes mark an embed or a category, so `Fichier:` counts as readily as `File:`. Links keep their visible part, semantic annotations `[[Property::Value]]` keep their value.
 
 It steps in only where `$wgContentHandlers[CONTENT_MODEL_WIKITEXT]` is still the stock handler. A wiki that brings its own keeps it.
 
@@ -118,7 +118,7 @@ $wgImproveSearchKeepTemplateParams = [ 'Address' => [ 'street', 'number' ] ];
 
 Now `{{Address|street=Main Street|number=12|sortkey=12}}` contributes `Main Street 12` to the index. Only the values, never the parameter names: indexing `sortkey` would be exactly the noise this extension removes. Parameters not on the list, `sortkey` here, stay out too.
 
-Names match regardless of case, underscores, and a localised or canonical namespace prefix, so `Address`, `template:address` and `Vorlage:Address` all mean the same template. Parser functions such as `{{#set:…}}` are never kept.
+Names match regardless of case, underscores, and a namespace prefix, so `Address`, `template:address` and `Modèle:Address` all mean the same template. The prefixes come from the wiki itself: canonical names, localised ones, and the aliases alongside them. Parser functions such as `{{#set:…}}` are never kept.
 
 The values land next to each other in the index, so a quoted search is exact. `"Main Street 12"` returns the one page at that address, while the unquoted `Main Street 12` matches every page containing all three words and leaves the ordering to MySQL's relevance ranking. How well the address page does there depends on how distinctive the street name is. `Wharf Road 7` puts it first, `New Street 4` does not, because "New" and "Street" appear all over the wiki.
 
@@ -148,12 +148,12 @@ Set `$wgImproveSearchSkipUnusedThumbnails = false;` to keep core's default in ev
 
 Two places ask for the page images in the same request as the results, and MediaWiki fetches the file data from the foreign repository before it answers at all. Nothing appears until the slowest image is known.
 
-* Minerva's typeahead search, where the `search/title` endpoint looks the images up for every hit. On a cold cache the images take several times as long as the search itself.
+* The typeahead search, in Minerva as in Vector 2022, where the `search/title` endpoint looks the images up for every hit. On a cold cache the images take several times as long as the search itself.
 * VisualEditor's title widgets, the link dialog above all, where every keystroke waits for the same thing.
 
 In both cases the images stay out of that request, and a second one fills them into the placeholder icons they render anyway.
 
-They go about it differently, because only one of them is answered in the browser. The typeahead script adds `improvesearchthumbs=0` to the search request, and the extension reads that parameter on the server and ends the `SearchResultProvideThumbnail` hook before PageImages looks anything up. It loads on the Minerva skin from MediaWiki 1.46, where the skin brings that search. The VisualEditor script loads for readers who may edit, and patches the widget when VisualEditor announces `ve.activationComplete`, late enough that `mediawiki.widgets` is never pulled in for its sake.
+They go about it differently, because only one of them is answered in the browser. The typeahead script adds `improvesearchthumbs=0` to the search request, and the extension reads that parameter on the server and ends the `SearchResultProvideThumbnail` hook before PageImages looks anything up. It loads wherever MediaWiki registers that search, from 1.46 on, and stays idle until the typeahead announces a search of its own. The VisualEditor script loads for readers who may edit, and patches the widget when VisualEditor announces `ve.activationComplete`, late enough that `mediawiki.widgets` is never pulled in for its sake.
 
 Set `$wgImproveSearchDeferSearchThumbnails = false;` to let both fetch their images with the results again.
 
@@ -223,7 +223,7 @@ php maintenance/run.php sql --query 'SELECT SUM(si_text LIKE "%.jpg%") FROM sear
 
 ## Requirements
 
-MediaWiki 1.46 or later, MySQL or MariaDB. Developed and tested against 1.46 with Semantic MediaWiki.
+MediaWiki 1.46 or later, MySQL or MariaDB. Developed and tested against 1.46.
 
 ## Copyright and license
 

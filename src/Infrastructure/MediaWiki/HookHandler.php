@@ -13,11 +13,8 @@ use MediaWiki\Registration\ExtensionRegistry;
  */
 class HookHandler implements BeforePageDisplayHook
 {
-    /** Skin whose search suggestions this deals with. */
-    private const MOBILE_SKIN = 'minerva';
-
-    /** Module Minerva registers for its Codex typeahead search. */
-    private const TYPEAHEAD_MODULE = 'skins.minerva.search';
+    /** Core module behind the Codex typeahead, in whichever skin has one. */
+    private const TYPEAHEAD_MODULE = 'mediawiki.skinning.typeaheadSearch';
 
     public function __construct(private readonly Config $config)
     {
@@ -25,7 +22,7 @@ class HookHandler implements BeforePageDisplayHook
 
     /**
      * Load the modules that fetch page images separately. Two places ask for
-     * them in the same request as the results: Minerva's typeahead search and
+     * them in the same request as the results: the typeahead search and
      * VisualEditor's title widgets. Both need PageImages as the source of the
      * thumbnails.
      *
@@ -47,13 +44,9 @@ class HookHandler implements BeforePageDisplayHook
             return;
         }
 
-        // Asking the module registry rather than the MediaWiki version: the
-        // skin brings the Codex typeahead from 1.46 on, and older Minerva
-        // has nothing the script could work on.
-        if (
-            $skin->getSkinName() === self::MOBILE_SKIN
-            && $out->getResourceLoader()->isModuleRegistered(self::TYPEAHEAD_MODULE)
-        ) {
+        // Minerva and Vector 2022 share the core typeahead, so what counts
+        // is whether this MediaWiki has that search, not which skin runs.
+        if ($out->getResourceLoader()->isModuleRegistered(self::TYPEAHEAD_MODULE)) {
             $out->addModules(['ext.improveSearch.deferredThumbnails']);
         }
 

@@ -34,6 +34,35 @@ class CleanWikitextContentTest extends TestCase
         ]));
     }
 
+    /**
+     * The names come from the wiki, and the stubbed one is French. Neither
+     * "Fichier" nor "Catégorie" is a name the cleaner knows by heart.
+     */
+    public function testStripsLinksUnderTheWikisOwnNamespaceNames(): void
+    {
+        self::withConfig();
+        $content = new CleanWikitextContent(
+            '[[Fichier:Pont.jpg|vignette|Le pont.]]Le pont est vieux.[[Catégorie:Ponts]]'
+        );
+
+        $clean = $content->getTextForSearchIndex();
+
+        self::assertStringNotContainsString('Pont.jpg', $clean);
+        self::assertStringNotContainsString('Ponts', $clean);
+        self::assertSame('Le pont est vieux.', $clean);
+    }
+
+    /** The canonical English names work on that wiki too, as they do on any. */
+    public function testStripsLinksUnderTheCanonicalNames(): void
+    {
+        self::withConfig();
+        $content = new CleanWikitextContent(
+            '[[File:Bridge.jpg|thumb|A caption.]]The bridge is old.[[Category:Bridges]]'
+        );
+
+        self::assertSame('The bridge is old.', $content->getTextForSearchIndex());
+    }
+
     public function testIndexesReadableText(): void
     {
         self::withConfig();

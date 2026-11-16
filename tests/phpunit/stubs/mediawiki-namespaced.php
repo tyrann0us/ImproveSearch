@@ -80,6 +80,16 @@ namespace MediaWiki {
             {
                 return $this->mainConfig;
             }
+
+            public function getContentLanguage(): \MediaWiki\Language\Language
+            {
+                return new \MediaWiki\Language\Language();
+            }
+
+            public function getNamespaceInfo(): \MediaWiki\Title\NamespaceInfo
+            {
+                return new \MediaWiki\Title\NamespaceInfo();
+            }
         }
     }
 }
@@ -174,6 +184,59 @@ namespace MediaWiki\ResourceLoader {
             public function isModuleRegistered(string $name): bool
             {
                 return in_array($name, $this->registered, true);
+            }
+        }
+    }
+}
+
+// ─── MediaWiki\Language ───────────────────────────────────────────
+
+namespace MediaWiki\Language {
+    if (!class_exists(Language::class)) {
+        /**
+         * A French wiki, so that a test can tell a name that came from here
+         * from one the cleaner knows by heart.
+         */
+        class Language
+        {
+            private const NAMES = [
+                -2 => 'Média',
+                6 => 'Fichier',
+                10 => 'Modèle',
+                14 => 'Catégorie',
+            ];
+
+            public function getNsText(int $index): string
+            {
+                return self::NAMES[$index] ?? '';
+            }
+
+            /** @return array<string, int> */
+            public function getNamespaceAliases(): array
+            {
+                return ['Image' => 6, 'Discussion image' => 7];
+            }
+        }
+    }
+}
+
+// ─── MediaWiki\Title (NamespaceInfo) ──────────────────────────────
+
+namespace MediaWiki\Title {
+    if (!class_exists(NamespaceInfo::class)) {
+        /** The English names, which every wiki accepts next to its own. */
+        class NamespaceInfo
+        {
+            private const NAMES = [
+                -2 => 'Media',
+                6 => 'File',
+                10 => 'Template',
+                14 => 'Category',
+            ];
+
+            public function getCanonicalName(int $index): string|false
+            {
+                return self::NAMES[$index] ?? false;
             }
         }
     }

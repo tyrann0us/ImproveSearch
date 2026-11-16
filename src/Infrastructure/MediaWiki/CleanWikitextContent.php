@@ -36,6 +36,47 @@ class CleanWikitextContent extends WikitextContent
             'files' => (bool) $config->get('ImproveSearchStripFiles'),
             'templates' => (bool) $config->get('ImproveSearchStripTemplates'),
             'keepTemplateParams' => (array) $config->get('ImproveSearchKeepTemplateParams'),
+            'namespaces' => self::namespaceNames(),
         ]);
+    }
+
+    /**
+     * The names this wiki writes its namespaces with, so that a French wiki's
+     * "Fichier:" is recognised as readily as "File:". Without them the cleaner
+     * falls back to a handful of German and English names, and anything else
+     * would land in the index.
+     *
+     * @return array<string, list<string>>
+     */
+    private static function namespaceNames(): array
+    {
+        return [
+            'media' => array_merge(self::namesOf(NS_FILE), self::namesOf(NS_MEDIA)),
+            'category' => self::namesOf(NS_CATEGORY),
+            'template' => self::namesOf(NS_TEMPLATE),
+        ];
+    }
+
+    /**
+     * The canonical name, the localised one, and every alias pointing there.
+     *
+     * @return list<string>
+     */
+    private static function namesOf(int $namespace): array
+    {
+        $services = MediaWikiServices::getInstance();
+        $language = $services->getContentLanguage();
+
+        $names = [
+            (string) $services->getNamespaceInfo()->getCanonicalName($namespace),
+            $language->getNsText($namespace),
+        ];
+        foreach ($language->getNamespaceAliases() as $alias => $index) {
+            if ($index === $namespace) {
+                $names[] = (string) $alias;
+            }
+        }
+
+        return array_values(array_unique(array_filter($names)));
     }
 }

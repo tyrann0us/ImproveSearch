@@ -22,6 +22,15 @@ if (!defined('NS_MAIN')) {
 if (!defined('NS_FILE')) {
     define('NS_FILE', 6);
 }
+if (!defined('NS_MEDIA')) {
+    define('NS_MEDIA', -2);
+}
+if (!defined('NS_TEMPLATE')) {
+    define('NS_TEMPLATE', 10);
+}
+if (!defined('NS_CATEGORY')) {
+    define('NS_CATEGORY', 14);
+}
 if (!defined('NS_SPECIAL')) {
     define('NS_SPECIAL', -1);
 }

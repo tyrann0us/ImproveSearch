@@ -220,6 +220,41 @@ class WikitextCleanerTest extends TestCase
     }
 
     /**
+     * The names the wiki uses are the caller's to pass. A page written on a
+     * French wiki says "Fichier", and nothing here would guess it.
+     */
+    public function testNamespaceNamesComeFromTheCaller(): void
+    {
+        $french = [
+            'media' => ['Fichier', 'File'],
+            'category' => ['Catégorie', 'Category'],
+            'template' => ['Modèle', 'Template'],
+        ];
+        $wikitext = '[[Fichier:Pont.jpg|vignette|Le pont.]]Le pont est vieux.'
+            . '[[Catégorie:Ponts]]{{Modèle:Adresse|rue=Rue du Port|numero=7}}';
+
+        $clean = WikitextCleaner::clean($wikitext, [
+            'namespaces' => $french,
+            'keepTemplateParams' => ['Modèle:Adresse' => ['rue', 'numero']],
+        ]);
+
+        self::assertStringNotContainsString('Pont.jpg', $clean);
+        self::assertStringNotContainsString('Ponts', $clean);
+        self::assertStringContainsString('Rue du Port 7', $clean);
+        self::assertStringContainsString('Le pont est vieux.', $clean);
+    }
+
+    /** Without them, the names it falls back to still work. */
+    public function testFallsBackToItsOwnNamespaceNames(): void
+    {
+        $clean = WikitextCleaner::clean(
+            '[[Datei:Brücke.jpg|mini|Die Brücke.]]Text.[[Kategorie:Brücken]]'
+        );
+
+        self::assertSame('Text.', $clean);
+    }
+
+    /**
      * The keep list and the templates switch are independent. With templates
      * kept, a call that is not on the keep list has to survive untouched.
      */

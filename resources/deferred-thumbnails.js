@@ -4,8 +4,7 @@
  * The REST endpoint behind the Codex typeahead looks up a thumbnail for every
  * hit before it answers, and MediaWiki fetches the file data from the foreign
  * repository first, so the whole list waits for the slowest image. On a cold
- * cache a ten-hit lookup took between 1.3 and 4.4 seconds instead of half of
- * one.
+ * cache that wait is several times the search itself.
  *
  * So: ask the endpoint to leave the images out, let the menu appear with the
  * placeholder icons it renders anyway, and fill them in from a second request.
@@ -21,11 +20,29 @@
 	const known = new Map();
 
 	let api = null;
+	let watching = false;
 
 	// The PHP side of this extension reads the parameter and ends the
-	// thumbnail hook before PageImages fills it in.
+	// thumbnail hook before PageImages fills it in. The first search is also
+	// the proof that this page has a typeahead at all, whatever the skin, so
+	// the menu is watched from here rather than from page load.
 	mw.hook( 'typeaheadSearch.appendUrlParams' ).add( ( append ) => {
 		append( 'improvesearchthumbs', '0' );
+
+		if ( watching ) {
+			return;
+		}
+		watching = true;
+
+		// Vue owns the menu and rebuilds it on every keystroke, so an image
+		// painted into it is gone after the next render, and painting again
+		// from the cache is the cheapest way to keep it. There is nothing
+		// narrower to watch than the document: on a narrow screen Minerva
+		// opens the search in a dialog of its own, outside the header.
+		new MutationObserver( scan ).observe( document.body, {
+			childList: true,
+			subtree: true,
+		} );
 	} );
 
 	/**
@@ -122,14 +139,4 @@
 			fetchImages( wanted );
 		}
 	}
-
-	// Vue owns the menu and rebuilds it on every keystroke, so an image
-	// painted into it is gone after the next render, and painting again from
-	// the cache is the cheapest way to keep it. There is nothing narrower to
-	// watch than the document: on a narrow screen Minerva opens the search in
-	// a dialog of its own, outside the form in the header.
-	new MutationObserver( scan ).observe( document.body, {
-		childList: true,
-		subtree: true,
-	} );
 } )();

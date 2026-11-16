@@ -27,15 +27,24 @@ async function titleSearch( page, params ) {
 }
 
 /**
- * Open Minerva's search and type, the way a reader does.
+ * Open the search of one skin and type, the way a reader does.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string}                          term
+ * @param {string}                          skin
  */
-async function search( page, term ) {
-	await page.setViewportSize( { width: 390, height: 844 } );
-	await page.goto( '/wiki/Main_Page?useskin=minerva' );
-	await page.locator( 'button#searchIcon' ).click();
+async function search( page, term, skin ) {
+	if ( skin === 'minerva' ) {
+		await page.setViewportSize( { width: 390, height: 844 } );
+	}
+	await page.goto( `/wiki/Main_Page?useskin=${ skin }` );
+
+	// Minerva keeps its search behind a button in the header, Vector has
+	// the input there already.
+	const trigger = page.locator( 'button#searchIcon' );
+	if ( await trigger.isVisible() ) {
+		await trigger.click();
+	}
 
 	const input = page
 		.locator( '.cdx-typeahead-search input[type="search"]' )
@@ -61,50 +70,64 @@ test.describe( 'typeahead thumbnails', () => {
 		);
 	} );
 
-	test( 'the menu asks for its list without images', async ( { page } ) => {
-		const searches = [];
-		page.on( 'request', ( request ) => {
-			if ( request.url().includes( '/search/title' ) ) {
-				searches.push( request.url() );
-			}
-		} );
+	// Whichever skin brings the typeahead has the problem, and none of this
+	// knows which one is running.
+	for ( const skin of [ 'minerva', 'vector-2022' ] ) {
+		test( `the menu asks for its list without images (${ skin })`, async ( {
+			page,
+		} ) => {
+			const searches = [];
+			page.on( 'request', ( request ) => {
+				if ( request.url().includes( '/search/title' ) ) {
+					searches.push( request.url() );
+				}
+			} );
 
-		await search( page, 'weavers' );
-		await expect( page.locator( '.cdx-menu-item' ).first() ).toBeVisible();
+			await search( page, 'weavers', skin );
+			await expect(
+				page.locator( '.cdx-menu-item' ).first()
+			).toBeVisible();
 
-		expect( searches.length ).toBeGreaterThan( 0 );
-		searches.forEach( ( url ) =>
-			expect( url ).toContain( 'improvesearchthumbs=0' )
-		);
-	} );
-
-	test( 'the image arrives afterwards', async ( { page } ) => {
-		const listed = [];
-		page.on( 'response', async ( response ) => {
-			if ( ! response.url().includes( '/search/title' ) ) {
-				return;
-			}
-			const body = await response.json().catch( () => ( { pages: [] } ) );
-			listed.push(
-				...body.pages.filter(
-					( result ) => result.title === PAGE_WITH_IMAGE
-				)
+			expect( searches.length ).toBeGreaterThan( 0 );
+			searches.forEach( ( url ) =>
+				expect( url ).toContain( 'improvesearchthumbs=0' )
 			);
 		} );
 
-		await search( page, 'weavers' );
+		test( `the image arrives afterwards (${ skin })`, async ( {
+			page,
+		} ) => {
+			const listed = [];
+			page.on( 'response', async ( response ) => {
+				if ( ! response.url().includes( '/search/title' ) ) {
+					return;
+				}
+				const body = await response
+					.json()
+					.catch( () => ( { pages: [] } ) );
+				listed.push(
+					...body.pages.filter(
+						( result ) => result.title === PAGE_WITH_IMAGE
+					)
+				);
+			} );
 
-		const entry = page
-			.locator( '.cdx-menu-item', { hasText: PAGE_WITH_IMAGE } )
-			.first();
-		await expect( entry ).toBeVisible();
-		await expect(
-			entry.locator( '.cdx-thumbnail__image' )
-		).toHaveAttribute( 'style', /background-image/ );
+			await search( page, 'weavers', skin );
 
-		// What the menu shows came from the second request: the list the
-		// menu was built from carried no image at all.
-		expect( listed.length ).toBeGreaterThan( 0 );
-		listed.forEach( ( result ) => expect( result.thumbnail ).toBeNull() );
-	} );
+			const entry = page
+				.locator( '.cdx-menu-item', { hasText: PAGE_WITH_IMAGE } )
+				.first();
+			await expect( entry ).toBeVisible();
+			await expect(
+				entry.locator( '.cdx-thumbnail__image' )
+			).toHaveAttribute( 'style', /background-image/ );
+
+			// What the menu shows came from the second request: the list the
+			// menu was built from carried no image at all.
+			expect( listed.length ).toBeGreaterThan( 0 );
+			listed.forEach( ( result ) =>
+				expect( result.thumbnail ).toBeNull()
+			);
+		} );
+	}
 } );

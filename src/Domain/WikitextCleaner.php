@@ -19,9 +19,18 @@ namespace MediaWiki\Extension\ImproveSearch\Domain;
  */
 final class WikitextCleaner
 {
-    /** Namespaces whose links are embeds or bookkeeping, not readable text. */
-    private const MEDIA_NAMESPACES = 'Datei|Bild|File|Image|Media|Medium';
-    private const CATEGORY_NAMESPACES = 'Kategorie|Category';
+    /**
+     * Namespace names to fall back on when the caller names none. Links and
+     * template calls carry the names of the wiki they were written on, and
+     * these are the ones this class can know without asking MediaWiki.
+     *
+     * @var array<string, list<string>>
+     */
+    private const DEFAULT_NAMESPACES = [
+        'media' => ['File', 'Image', 'Media', 'Medium', 'Datei', 'Bild'],
+        'category' => ['Category', 'Kategorie'],
+        'template' => ['Template', 'Vorlage'],
+    ];
 
     /** Tags whose content is markup, data or a file list rather than prose. */
     private const TAGS_WITH_CONTENT = 'ref|gallery|imagemap|maplink|mapframe|math|chem|score|graph|'
@@ -35,17 +44,23 @@ final class WikitextCleaner
      * @param array{
      *     files?: bool,
      *     templates?: bool,
-     *     keepTemplateParams?: array<string, list<string>>
-     * } $options Both flags default to true, the keep list defaults to empty.
-     *     Passing them explicitly keeps this class usable without MediaWiki,
-     *     which is what the unit test does.
+     *     keepTemplateParams?: array<string, list<string>>,
+     *     namespaces?: array<string, list<string>>
+     * } $options Both flags default to true, the keep list defaults to empty,
+     *     and the namespace names fall back to DEFAULT_NAMESPACES. Passing
+     *     them explicitly keeps this class usable without MediaWiki, which is
+     *     what the unit test does.
      */
     // phpcs:ignore Syde.Functions.FunctionLength.TooLong -- one linear pipeline; splitting it would hide the order the steps depend on
     public static function clean(string $text, array $options = []): string
     {
         $stripFiles = $options['files'] ?? true;
         $stripTemplates = $options['templates'] ?? true;
-        $keep = self::normaliseKeepList($options['keepTemplateParams'] ?? []);
+        $prefixes = self::prefixPatterns($options['namespaces'] ?? []);
+        $keep = self::normaliseKeepList(
+            $options['keepTemplateParams'] ?? [],
+            $prefixes['template']
+        );
 
         // Comments.
         $text = (string) preg_replace('/<!--.*?-->/s', ' ', $text);
@@ -64,28 +79,28 @@ final class WikitextCleaner
 
         // Template calls and parser functions, innermost first.
         if ($stripTemplates || $keep !== []) {
-            $text = self::stripTemplates($text, $stripTemplates, $keep);
+            $text = self::stripTemplates($text, $stripTemplates, $keep, $prefixes['template']);
         }
 
         // External links before wiki links: a file caption may contain one, and
         // its closing bracket would otherwise hide the embed around it.
         // [https://… label] -> label
         $text = (string) preg_replace(
-            '/\[(?:https?:|ftp:|mailto:|\/\/)[^\s\[\]]*\s+([^\[\]]*)\]/i',
+            '/\[(?:https?:|ftp:|mailto:|\/\/)[^\s\[\]]*\s+([^\[\]]*)]/i',
             ' $1 ',
             $text
         );
-        $text = (string) preg_replace('/\[(?:https?:|ftp:|mailto:|\/\/)[^\s\[\]]*\]/i', ' ', $text);
+        $text = (string) preg_replace('/\[(?:https?:|ftp:|mailto:|\/\/)[^\s\[\]]*]/i', ' ', $text);
         // Bare addresses. Square brackets are not part of them, or the pattern
         // would swallow the end of a surrounding embed.
         $text = (string) preg_replace('#(?:https?://|ftp://)[^\s\[\]|]+#i', ' ', $text);
 
         // Wiki links, innermost first.
-        $text = self::stripLinks($text, $stripFiles);
+        $text = self::stripLinks($text, $stripFiles, $prefixes);
 
         // Table markup.
         $text = (string) preg_replace('/^\s*\{\|.*$/m', ' ', $text);
-        $text = (string) preg_replace('/^\s*\|\}.*$/m', ' ', $text);
+        $text = (string) preg_replace('/^\s*\|}.*$/m', ' ', $text);
         $text = (string) preg_replace('/^\s*[|!]-.*$/m', ' ', $text);
         // Cells: cut the attributes in front of the last pipe.
         $text = (string) preg_replace('/^\s*[|!]\s*(?:[^|\[\]{}]*\|(?!\|))?/m', ' ', $text);
@@ -114,21 +129,64 @@ final class WikitextCleaner
     /**
      * @param array<string, list<string>> $keep
      */
-    private static function stripTemplates(string $text, bool $stripTemplates, array $keep): string
+    private static function stripTemplates(
+        string $text,
+        bool $stripTemplates,
+        array $keep,
+        string $templates
+    ): string {
+
+        return self::repeat(
+            $text,
+            static function (string $round) use ($stripTemplates, $keep, $templates): string {
+                return (string) preg_replace_callback(
+                    '/\{\{([^{}]*)}}/s',
+                    static function (array $matches) use ($stripTemplates, $keep, $templates): string {
+                        $kept = self::keptParameterValues($matches[1], $keep, $templates);
+                        if ($kept !== null) {
+                            return ' ' . $kept . ' ';
+                        }
+                        return $stripTemplates ? ' ' : $matches[0];
+                    },
+                    $round
+                );
+            }
+        );
+    }
+
+    /**
+     * One case-insensitive alternation per namespace group, built from the
+     * names the wiki uses for it.
+     *
+     * @param array<string, list<string>> $namespaces
+     * @return array{media: string, category: string, template: string}
+     */
+    private static function prefixPatterns(array $namespaces): array
     {
-        return self::repeat($text, static function (string $round) use ($stripTemplates, $keep): string {
-            return (string) preg_replace_callback(
-                '/\{\{([^{}]*)\}\}/s',
-                static function (array $matches) use ($stripTemplates, $keep): string {
-                    $kept = self::keptParameterValues($matches[1], $keep);
-                    if ($kept !== null) {
-                        return ' ' . $kept . ' ';
-                    }
-                    return $stripTemplates ? ' ' : $matches[0];
-                },
-                $round
-            );
-        });
+        $patterns = [];
+        foreach (self::DEFAULT_NAMESPACES as $group => $fallback) {
+            $names = $namespaces[$group] ?? [];
+            $patterns[$group] = self::alternation($names === [] ? $fallback : $names);
+        }
+
+        /** @var array{media: string, category: string, template: string} $patterns */
+        return $patterns;
+    }
+
+    /**
+     * @param list<string> $names
+     */
+    private static function alternation(array $names): string
+    {
+        return implode('|', array_map(
+            // A page name reads spaces and underscores as the same character.
+            static fn (string $name): string => str_replace(
+                [' ', '_'],
+                '[ _]',
+                preg_quote($name, '/')
+            ),
+            array_filter(array_map('trim', $names))
+        ));
     }
 
     /**
@@ -151,26 +209,27 @@ final class WikitextCleaner
 
     /**
      * Normalises the configured template names so that "Address",
-     * "Vorlage:Address" and "address" all mean the same thing.
+     * "Template:Address" and "address" all mean the same thing, in whichever
+     * language the wiki names that namespace.
      *
      * @param array<string, list<string>> $keepTemplateParams
      * @return array<string, list<string>>
      */
-    private static function normaliseKeepList(array $keepTemplateParams): array
+    private static function normaliseKeepList(array $keepTemplateParams, string $templates): array
     {
         $normalised = [];
         foreach ($keepTemplateParams as $name => $params) {
-            $normalised[self::normaliseTemplateName((string) $name)] = array_values(
+            $normalised[self::normaliseTemplateName((string) $name, $templates)] = array_values(
                 array_map('trim', $params)
             );
         }
         return $normalised;
     }
 
-    private static function normaliseTemplateName(string $name): string
+    private static function normaliseTemplateName(string $name, string $templates): string
     {
         $name = trim(str_replace('_', ' ', ltrim(trim($name), ':')));
-        $name = (string) preg_replace('/^(?:Vorlage|Template)\s*:\s*/iu', '', $name);
+        $name = (string) preg_replace('/^(?:' . $templates . ')\s*:\s*/iu', '', $name);
 
         return mb_strtolower($name);
     }
@@ -185,7 +244,7 @@ final class WikitextCleaner
      * @param string $inner Everything between the braces
      * @param array<string, list<string>> $keep
      */
-    private static function keptParameterValues(string $inner, array $keep): ?string
+    private static function keptParameterValues(string $inner, array $keep, string $templates): ?string
     {
         if ($keep === [] || str_starts_with(ltrim($inner), '#')) {
             // Parser functions ({{#set:…}}, {{#if:…}}) are never templates.
@@ -193,7 +252,7 @@ final class WikitextCleaner
         }
 
         $parts = explode('|', $inner);
-        $name = self::normaliseTemplateName((string) array_shift($parts));
+        $name = self::normaliseTemplateName((string) array_shift($parts), $templates);
         if (!isset($keep[$name])) {
             return null;
         }
@@ -216,16 +275,19 @@ final class WikitextCleaner
         return implode(' ', $values);
     }
 
-    private static function stripLinks(string $text, bool $stripFiles): string
+    /**
+     * @param array{media: string, category: string, template: string} $prefixes
+     */
+    private static function stripLinks(string $text, bool $stripFiles, array $prefixes): string
     {
-        $media = '/^\s*:?\s*(?:' . self::MEDIA_NAMESPACES . ')\s*:/iu';
-        $category = '/^\s*:?\s*(?:' . self::CATEGORY_NAMESPACES . ')\s*:/iu';
+        $media = '/^\s*:?\s*(?:' . $prefixes['media'] . ')\s*:/iu';
+        $category = '/^\s*:?\s*(?:' . $prefixes['category'] . ')\s*:/iu';
 
         return self::repeat($text, static function (string $round) use ($media, $category, $stripFiles): string {
             // The character class excludes brackets, so this only ever matches
             // the innermost link. Repeated rounds work outwards from there.
             return (string) preg_replace_callback(
-                '/\[\[([^\[\]]*)\]\]/u',
+                '/\[\[([^\[\]]*)]]/u',
                 static function (array $matches) use ($media, $category, $stripFiles): string {
                     return self::renderLink($matches[1], $media, $category, $stripFiles);
                 },

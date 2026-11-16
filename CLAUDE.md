@@ -82,7 +82,7 @@ page save → SearchUpdate → Content::getTextForSearchIndex()
        ↓
 CleanWikitextContent::getTextForSearchIndex()
        ↓
-WikitextCleaner::clean(text, files/templates/keepTemplateParams)
+WikitextCleaner::clean(text, files/templates/keepTemplateParams/namespaces)
        ↓
 searchindex.si_text   (and, through RevisionSearchResultTrait::initText(),
                        the snippet on the result page)
@@ -95,7 +95,7 @@ titleQuery(): page LIKE '%…%' under utf8mb4_unicode_ci, redirects excluded
        ↓  suggestion list only, once title matches run out:
 contentMatches() → doSearchTextInDB()   (same query as the results page)
 
-Typeahead thumbnails (Minerva from 1.46, which registers skins.minerva.search):
+Typeahead thumbnails (any skin with the Codex typeahead, from 1.46 on):
 HookHandler::onBeforePageDisplay() → ext.improveSearch.deferredThumbnails
        ↓
 resources/deferred-thumbnails.js adds improvesearchthumbs=0 to the
@@ -112,9 +112,11 @@ Codex entries from a second request to api.php
 
 ## Key invariants
 
-**No hard dependency on another extension.** PageImages and VisualEditor are detected by name through `ExtensionRegistry::isLoaded()`, and Minerva's search by its module name through the ResourceLoader. Nothing calls into another extension's classes, so nothing fatals when they are absent. Keep it that way: a `use` of a foreign class would turn an optional feature into a crash.
+**No hard dependency on another extension.** PageImages and VisualEditor are detected by name through `ExtensionRegistry::isLoaded()`, and the typeahead search by its core module name through the ResourceLoader. Nothing calls into another extension's classes, so nothing fatals when they are absent. Keep it that way: a `use` of a foreign class would turn an optional feature into a crash.
 
 **Every switch stands down when the wiki has an opinion.** `Setup` runs from `extension.json`'s `callback`, after `LocalSettings.php`. It claims `$wgSearchType` only when unset and the DB is MySQL, replaces the wikitext content handler only when it is the stock one, and flips `search-thumbnail-extra-namespaces` only when `$wgThumbnailNamespaces` holds nothing beyond `NS_FILE`. Anything else is the operator's decision.
+
+**Namespace names come from the wiki.** `WikitextCleaner` takes the ones it recognises as an option; `CleanWikitextContent` fills them from `NamespaceInfo` and the content language, aliases included. The defaults in `DEFAULT_NAMESPACES` are a fallback for the unit tests, not the list a wiki runs on.
 
 **The cleaner is regular expressions, not a parser.** `WikitextCleaner` may leave crumbs behind on exotic or broken markup. It must never lose visible prose; that is the property the tests guard.
 

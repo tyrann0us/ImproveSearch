@@ -17,7 +17,7 @@ use Skin;
 class HookHandlerTest extends TestCase
 {
     private const MODULE = 'ext.improveSearch.deferredThumbnails';
-    private const MINERVA_SEARCH = 'skins.minerva.search';
+    private const TYPEAHEAD = 'mediawiki.skinning.typeaheadSearch';
     private const VE_MODULE = 'ext.improveSearch.deferredVeThumbnails';
 
     /**
@@ -26,16 +26,15 @@ class HookHandlerTest extends TestCase
     public static function silentProvider(): array
     {
         return [
-            'switch off' => [false, 'minerva', ['PageImages'], [self::MINERVA_SEARCH]],
-            'other skin' => [true, 'vector', ['PageImages'], [self::MINERVA_SEARCH]],
-            'no PageImages' => [true, 'minerva', [], [self::MINERVA_SEARCH]],
-            'skin without the typeahead' => [true, 'minerva', ['PageImages'], []],
+            'switch off' => [false, 'minerva', ['PageImages'], [self::TYPEAHEAD]],
+            'no PageImages' => [true, 'minerva', [], [self::TYPEAHEAD]],
+            'MediaWiki without the typeahead' => [true, 'vector-2022', ['PageImages'], []],
         ];
     }
 
     /**
-     * The module is only worth loading where all three parts of the problem
-     * are present: the skin, its typeahead search, and PageImages.
+     * The module is only worth loading where both parts of the problem are
+     * present: the typeahead search and PageImages.
      *
      * @param list<string> $loadedExtensions
      * @param list<string> $registeredModules
@@ -55,12 +54,25 @@ class HookHandlerTest extends TestCase
         self::assertSame([], $out->modules);
     }
 
-    public function testLoadsTheModuleWhenAllThreePartsArePresent(): void
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function skinProvider(): array
+    {
+        return [
+            'vector 2022' => ['vector-2022'],
+            'anything else' => ['timeless'],
+        ];
+    }
+
+    /** Every skin with that search has the problem, so none is asked about. */
+    #[DataProvider('skinProvider')]
+    public function testLoadsTheModuleWhateverTheSkin(string $skinName): void
     {
         ExtensionRegistry::setInstanceForTesting(['PageImages']);
-        $out = new OutputPage(true, [self::MINERVA_SEARCH]);
+        $out = new OutputPage(true, [self::TYPEAHEAD]);
 
-        $this->handler(true)->onBeforePageDisplay($out, new Skin('minerva'));
+        $this->handler(true)->onBeforePageDisplay($out, new Skin($skinName));
 
         self::assertSame([self::MODULE], $out->modules);
     }

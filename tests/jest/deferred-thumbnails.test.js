@@ -82,13 +82,18 @@ async function settle() {
 /**
  * Load the module into a fresh environment.
  *
+ * @param {boolean} [searched] Whether a first search has happened, which is
+ *                             when the module starts watching the menu
  * @return {Object} as returned by createMwEnv()
  */
-function activate() {
+function activate( searched = true ) {
 	const env = createMwEnv( global, {} );
 	global.mw = env.mw;
 	jest.resetModules();
 	require( RESOURCE );
+	if ( searched ) {
+		env.fireHook( 'typeaheadSearch.appendUrlParams', () => {} );
+	}
 
 	return env;
 }
@@ -104,6 +109,16 @@ describe( 'deferred typeahead thumbnails', () => {
 		} );
 
 		expect( appended ).toEqual( { improvesearchthumbs: '0' } );
+	} );
+
+	it( 'stays out of the way until a search happens', async () => {
+		const menu = createSearchForm();
+		const env = activate( false );
+
+		render( menu, [ 'Tanner Row' ] );
+		await settle();
+
+		expect( env.requests ).toHaveLength( 0 );
 	} );
 
 	it( 'fetches the images afterwards and paints them', async () => {

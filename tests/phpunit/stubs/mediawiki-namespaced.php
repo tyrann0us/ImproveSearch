@@ -49,6 +49,7 @@ namespace MediaWiki {
             public const ContentHandlers = 'ContentHandlers';
             public const DBtype = 'DBtype';
             public const DefaultUserOptions = 'DefaultUserOptions';
+            public const Hooks = 'Hooks';
             public const SearchType = 'SearchType';
             public const ThumbnailNamespaces = 'ThumbnailNamespaces';
         }
@@ -173,6 +174,40 @@ namespace MediaWiki\ResourceLoader {
             public function isModuleRegistered(string $name): bool
             {
                 return in_array($name, $this->registered, true);
+            }
+        }
+    }
+}
+
+// ─── MediaWiki\Context ────────────────────────────────────────────
+
+namespace MediaWiki\Context {
+    if (!class_exists(RequestContext::class)) {
+        /** The chain Setup walks: the main context, and through it a request. */
+        class RequestContext
+        {
+            public static function getMain(): self
+            {
+                return new self();
+            }
+
+            public function getRequest(): \MediaWiki\Request\WebRequest
+            {
+                return new \MediaWiki\Request\WebRequest();
+            }
+        }
+    }
+}
+
+// ─── MediaWiki\Request ────────────────────────────────────────────
+
+namespace MediaWiki\Request {
+    if (!class_exists(WebRequest::class)) {
+        class WebRequest
+        {
+            public function getRawVal(string $name): ?string
+            {
+                return null;
             }
         }
     }
